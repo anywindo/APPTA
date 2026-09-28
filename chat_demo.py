@@ -510,7 +510,8 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
             # ---- Client View (Alice / Bob) ----
             with gr.Column(visible=False) as client_view:
                 with gr.Row():
-                    with gr.Column(scale=1):
+                    # Left column: Chat
+                    with gr.Column(scale=2):
                         chatbot = gr.Chatbot(label="Chat Window", height=550, group_consecutive_messages=False)
                         with gr.Row(equal_height=True):
                             msg_input = gr.Textbox(
@@ -521,26 +522,26 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                             )
                             send_btn = gr.Button("Send", variant="primary", scale=1, min_width=80)
 
+                    # Right column: Tools and Logs
                     with gr.Column(scale=1):
+                        with gr.Accordion("⚙️ Settings & Tools", open=True):
+                            with gr.Row(equal_height=True):
+                                auto_refresh = gr.Checkbox(label="Auto Refresh Messages", value=True)
+                                refresh_btn = gr.Button("🔄 Check Now", size="sm")
+                            
+                            regen_key_btn = gr.Button("🔑 Regenerate Ephemeral Key", variant="secondary")
+                            reset_server_btn = gr.Button("🚨 Restart Server / Wipe DB", variant="stop")
+                            
                         crypto_log = gr.Textbox(
-                            label="Crypto Log (Verbose)",
-                            lines=27,
-                            max_lines=27,
+                            label="🛡️ Crypto Log (Verbose)",
+                            lines=18,
+                            max_lines=18,
                             interactive=False,
                             autoscroll=True,
                             elem_id="crypto_log_box",
                         )
 
-                gr.Markdown("### Auto Refresh & Message Fetching")
-                with gr.Row():
-                    refresh_btn = gr.Button("Check for New Messages", variant="primary", scale=2)
-                    auto_refresh = gr.Checkbox(label="Auto Refresh", value=True, scale=1)
                 timer = gr.Timer(1, active=True)
-
-                gr.Markdown("### Key Management & Server Maintenance")
-                with gr.Row():
-                    regen_key_btn = gr.Button("Regenerate Ephemeral Key", variant="secondary")
-                    reset_server_btn = gr.Button("Restart Server / Wipe DB", variant="stop")
 
         # ---- Server View (Database Browser) ----
         with gr.Tab("Database Browser"):
