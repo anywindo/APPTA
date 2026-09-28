@@ -526,7 +526,7 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     with gr.Column(visible=False) as client_view:
         with gr.Row():
             with gr.Column(scale=1):
-                chatbot = gr.Chatbot(label="Chat Window", height=550, type="messages", group_consecutive_messages=False)
+                chatbot = gr.Chatbot(label="Chat Window", height=550, group_consecutive_messages=False)
                 with gr.Row(equal_height=True):
                     msg_input = gr.Textbox(
                         placeholder="Type a message…",
