@@ -5,6 +5,7 @@ import os
 import re
 import pandas as pd
 import time
+import plotly.express as px
 
 from src import crypto
 from src import protocol
@@ -436,7 +437,19 @@ def view_db():
     metrics_df["Encryption Time (ms)"] = metrics_df.apply(lambda row: row["Processing Time (ms)"] if row["Action"] == "encrypt" else None, axis=1)
     metrics_df["Decryption Time (ms)"] = metrics_df.apply(lambda row: row["Processing Time (ms)"] if row["Action"] == "decrypt" else None, axis=1)
 
-    return keys_df, msgs_df, metrics_df, metrics_df, metrics_df, metrics_df, metrics_df
+    enc_df = metrics_df.dropna(subset=["Encryption Time (ms)"])
+    enc_fig = px.scatter(enc_df, x="Message Size (Bytes)", y="Encryption Time (ms)", title="Encryption Time vs Message Size", trendline="ols" if len(enc_df) > 1 else None)
+    
+    dec_df = metrics_df.dropna(subset=["Decryption Time (ms)"])
+    dec_fig = px.scatter(dec_df, x="Message Size (Bytes)", y="Decryption Time (ms)", title="Decryption Time vs Message Size", trendline="ols" if len(dec_df) > 1 else None)
+    
+    lat_df = metrics_df.dropna(subset=["Latency (ms)"])
+    lat_fig = px.scatter(lat_df, x="Message Size (Bytes)", y="Latency (ms)", title="End-to-End Latency vs Message Size", trendline="ols" if len(lat_df) > 1 else None)
+    
+    thr_df = metrics_df.dropna(subset=["Throughput (KB/s)"])
+    thr_fig = px.scatter(thr_df, x="Message Size (Bytes)", y="Throughput (KB/s)", color="Action", title="Throughput vs Message Size", trendline="ols" if len(thr_df) > 1 else None)
+
+    return keys_df, msgs_df, metrics_df, enc_fig, dec_fig, lat_fig, thr_fig
 
 
 def logout(session, chatbot):
@@ -623,36 +636,15 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
             
             with gr.Row():
                 with gr.Column():
-                    enc_time_plot = gr.ScatterPlot(
-                        x="Message Size (Bytes)",
-                        y="Encryption Time (ms)",
-                        title="Encryption Time vs Message Size",
-                        tooltip=["Message Size (Bytes)", "Encryption Time (ms)"]
-                    )
+                    enc_time_plot = gr.Plot(label="Encryption Time vs Message Size")
                 with gr.Column():
-                    dec_time_plot = gr.ScatterPlot(
-                        x="Message Size (Bytes)",
-                        y="Decryption Time (ms)",
-                        title="Decryption Time vs Message Size",
-                        tooltip=["Message Size (Bytes)", "Decryption Time (ms)"]
-                    )
+                    dec_time_plot = gr.Plot(label="Decryption Time vs Message Size")
             
             with gr.Row():
                 with gr.Column():
-                    latency_plot = gr.ScatterPlot(
-                        x="Message Size (Bytes)",
-                        y="Latency (ms)",
-                        title="End-to-End Latency vs Message Size",
-                        tooltip=["Message Size (Bytes)", "Latency (ms)"]
-                    )
+                    latency_plot = gr.Plot(label="End-to-End Latency vs Message Size")
                 with gr.Column():
-                    throughput_plot = gr.ScatterPlot(
-                        x="Message Size (Bytes)",
-                        y="Throughput (KB/s)",
-                        color="Action",
-                        title="Throughput vs Message Size",
-                        tooltip=["Message Size (Bytes)", "Action", "Throughput (KB/s)"]
-                    )
+                    throughput_plot = gr.Plot(label="Throughput vs Message Size")
             
             with gr.Accordion("📊 Metrics Table", open=False):
                 perf_metrics_df = gr.Dataframe(interactive=False, wrap=True)
