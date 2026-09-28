@@ -407,6 +407,13 @@ def view_db():
         "FROM messages ORDER BY id DESC LIMIT 50"
     )
     msgs = c.fetchall()
+
+    c.execute(
+        "SELECT id, message_id, action, latency_ms, throughput_kbs, processing_time_ms, timestamp "
+        "FROM performance_metrics ORDER BY id DESC LIMIT 50"
+    )
+    metrics = c.fetchall()
+    
     conn.close()
 
     # Format data for gr.Dataframe
@@ -420,7 +427,12 @@ def view_db():
         columns=["ID", "Sender", "Nonce", "Ciphertext", "Tag", "Time"]
     )
 
-    return keys_df, msgs_df
+    metrics_df = pd.DataFrame(
+        metrics,
+        columns=["ID", "Message ID", "Action", "Latency (ms)", "Throughput (KB/s)", "Processing Time (ms)", "Time"]
+    )
+
+    return keys_df, msgs_df, metrics_df
 
 
 def logout(session, chatbot):
@@ -593,6 +605,21 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
             with gr.Accordion("✉️ Messages Table", open=True):
                 db_msgs_df = gr.Dataframe(interactive=False, wrap=True)
 
+        # ---- Performance Tab ----
+        with gr.Tab("Performance"):
+            with gr.Row(equal_height=True):
+                with gr.Column(scale=3):
+                    gr.Markdown("## Performance Metrics")
+                    gr.Markdown("View encryption/decryption latency, throughput, and end-to-end latency.")
+                with gr.Column(scale=1):
+                    refresh_perf_btn = gr.Button("Refresh Metrics", variant="primary")
+                    perf_auto_refresh = gr.Checkbox(label="Auto Refresh (1s)", value=True)
+                    
+            perf_timer = gr.Timer(1, active=True)
+            
+            with gr.Accordion("📊 Metrics Table", open=True):
+                perf_metrics_df = gr.Dataframe(interactive=False, wrap=True)
+
     # ---- Event wiring ----
     regen_key_btn.click(
         fn=regenerate_key,
@@ -673,13 +700,31 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     db_timer.tick(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df],
     )
 
     refresh_db_btn.click(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df],
+    )
+    
+    perf_auto_refresh.change(
+        fn=lambda active: gr.update(active=active),
+        inputs=[perf_auto_refresh],
+        outputs=[perf_timer]
+    )
+
+    perf_timer.tick(
+        fn=view_db,
+        inputs=[],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df],
+    )
+
+    refresh_perf_btn.click(
+        fn=view_db,
+        inputs=[],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df],
     )
 
 if __name__ == "__main__":
