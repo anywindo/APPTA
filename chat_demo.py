@@ -623,9 +623,7 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                         x="Message ID",
                         y="Latency (ms)",
                         title="End-to-End Latency over Messages (Decryption Only)",
-                        tooltip=["Message ID", "Latency (ms)"],
-                        width=400,
-                        height=300
+                        tooltip=["Message ID", "Latency (ms)"]
                     )
                 with gr.Column():
                     proc_time_plot = gr.LinePlot(
@@ -633,9 +631,7 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                         y="Processing Time (ms)",
                         color="Action",
                         title="Processing Time (Encrypt vs Decrypt)",
-                        tooltip=["Message ID", "Action", "Processing Time (ms)"],
-                        width=400,
-                        height=300
+                        tooltip=["Message ID", "Action", "Processing Time (ms)"]
                     )
             
             with gr.Row():
@@ -644,9 +640,7 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                         y="Throughput (KB/s)",
                         color="Action",
                         title="Throughput over Messages",
-                        tooltip=["Message ID", "Action", "Throughput (KB/s)"],
-                        width=800,
-                        height=300
+                        tooltip=["Message ID", "Action", "Throughput (KB/s)"]
                     )
             
             with gr.Accordion("📊 Metrics Table", open=False):
