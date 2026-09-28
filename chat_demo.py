@@ -79,7 +79,6 @@ def _db():
 # Global State
 # ---------------------------------------------------------------------------
 
-ACTIVE_USERS = set()
 
 # ---------------------------------------------------------------------------
 # Login
@@ -103,18 +102,6 @@ def login(identity, session, chatbot):
 
 
     # ---- Alice or Bob ----
-    if identity in ACTIVE_USERS and session.get("identity") != identity:
-        return (
-            gr.update(visible=False),
-            chatbot,
-            "",
-            f"Error: **{identity}** is already logged in on another browser! Please Logout first.",
-            session,
-            gr.update(visible=True),   # identity_dd
-            gr.update(visible=True),   # login_btn
-            gr.update(visible=False),  # logout_btn
-        )
-    ACTIVE_USERS.add(identity)
 
     priv_key, pub_key = crypto.generate_keypair()
     pub_bytes = protocol.serialize_public_key(pub_key)
@@ -398,9 +385,6 @@ def view_db():
 
 def logout(session, chatbot):
     identity = session.get("identity")
-    if identity in ACTIVE_USERS:
-        ACTIVE_USERS.remove(identity)
-    
     if identity:
         session["previous_identity"] = identity
         
@@ -531,7 +515,7 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                             elem_id="crypto_log_box",
                         )
 
-                with gr.Accordion("⚙️ Client Settings & Server Maintenance", open=False):
+                with gr.Accordion("Settings", open=False):
                     with gr.Row():
                         with gr.Column():
                             gr.Markdown("#### Auto Refresh & Message Fetching")
