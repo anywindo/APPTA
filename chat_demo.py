@@ -4,6 +4,7 @@ import datetime
 import os
 import re
 import pandas as pd
+import time
 
 from src import crypto
 from src import protocol
@@ -163,7 +164,7 @@ def login(identity, session, chatbot):
     previous_identity = session.get("previous_identity")
     if identity == previous_identity:
         last_msg_id = session.get("last_msg_id", 0)
-        chatbot.append({"role": "assistant", "content": "<div class='system-notification'>🔒 Your security code changed.</div>"})
+        chatbot.append({"role": "assistant", "content": "🔒 Your security code changed."})
     else:
         last_msg_id = 0
         chatbot = []
@@ -220,7 +221,7 @@ def _sync_peer_key(session, log, history=None):
             if session.get("peer_pub_bytes") is not None and session.get("peer_pub_bytes") != peer_pub_bytes:
                 log += f"[{identity}] Detected {peer} changed their key. Derived new AES-GCM session key.\n"
                 if history is not None:
-                    history.append({"role": "assistant", "content": "<div class='system-notification'>🔒 Your security code changed.</div>"})
+                    history.append({"role": "assistant", "content": "🔒 Your security code changed."})
             else:
                 log += f"[{identity}] Found {peer}'s public key → derived shared AES-GCM session key\n"
                 logger.info("%s derived shared key with %s", identity, peer)
@@ -255,13 +256,20 @@ def send_message(message, history, log, session):
 
     # Encrypt
     plaintext = message.encode("utf-8")
+    
+    start_t = time.perf_counter()
     nonce, ciphertext, tag = crypto.encrypt(shared_key, plaintext)
+    end_t = time.perf_counter()
+    
+    enc_time_ms = (end_t - start_t) * 1000
+    throughput_kbs = (len(plaintext) / 1024) / (end_t - start_t) if (end_t - start_t) > 0 else 0
 
     log += "\n═══ SENDING MESSAGE ═══\n"
     log += f"  Plaintext      : {message}\n"
     log += f"  Nonce  (12 B)  : {nonce.hex()}\n"
     log += f"  Ciphertext ({len(ciphertext):>3} B): {ciphertext.hex()}\n"
     log += f"  Auth Tag (16 B): {tag.hex()}\n"
+    log += f"  Performance    : Encrypt={enc_time_ms:.3f} ms | Throughput={throughput_kbs:.1f} KB/s\n"
     log += "-----------------------\n"
 
     logger.info(f"[{identity}] Sending encrypted message to untrusted server.")
@@ -306,7 +314,7 @@ def receive_messages(history, log, session):
     conn = _db()
     c = conn.cursor()
     c.execute(
-        "SELECT id, nonce, ciphertext, tag FROM messages "
+        "SELECT id, nonce, ciphertext, tag, timestamp FROM messages "
         "WHERE sender = ? AND id > ? ORDER BY id ASC",
         (peer, last_id),
     )
@@ -317,7 +325,7 @@ def receive_messages(history, log, session):
         log = append_log(log, f"\n[{identity}] No new messages from {peer}.\n")
         return history, log, session
 
-    for msg_id, nonce, ciphertext, tag in rows:
+    for msg_id, nonce, ciphertext, tag, ts_str in rows:
         log += "\n═══ RECEIVING MESSAGE ═══\n"
         log += f"  DB Row ID      : {msg_id}\n"
         log += f"  Nonce  (12 B)  : {nonce.hex()}\n"
@@ -326,12 +334,25 @@ def receive_messages(history, log, session):
         log += "-----------------------\n"
 
         try:
+            start_t = time.perf_counter()
             plaintext_bytes = crypto.decrypt(shared_key, nonce, ciphertext, tag)
+            end_t = time.perf_counter()
+            
             plaintext = plaintext_bytes.decode("utf-8")
+            
+            dec_time_ms = (end_t - start_t) * 1000
+            throughput_kbs = (len(plaintext_bytes) / 1024) / (end_t - start_t) if (end_t - start_t) > 0 else 0
+            
+            e2e_latency_ms = 0.0
+            if ts_str:
+                sent_time = datetime.datetime.fromisoformat(ts_str)
+                e2e_latency_ms = (datetime.datetime.now() - sent_time).total_seconds() * 1000
+
             logger.info(f"[{identity}] Successfully decrypted message (ID: {msg_id}) from {peer}.")
             logger.debug(f"Decrypted plaintext: '{plaintext}'")
             log += f"  Decrypt + Auth : SUCCESS\n"
             log += f"  Plaintext      : {plaintext}\n"
+            log += f"  Performance    : Decrypt={dec_time_ms:.3f} ms | Throughput={throughput_kbs:.1f} KB/s | Latency={e2e_latency_ms:.1f} ms\n"
             log += "-----------------------\n"
             history.append({"role": "assistant", "content": plaintext})
         except Exception as e:
@@ -432,7 +453,7 @@ def regenerate_key(log, session, chatbot):
 
     session, log = _sync_peer_key(session, log, chatbot)
     
-    chatbot.append({"role": "assistant", "content": "<div class='system-notification'>🔒 Your security code changed.</div>"})
+    chatbot.append({"role": "assistant", "content": "🔒 Your security code changed."})
     
     return log, session, chatbot
 
@@ -474,33 +495,7 @@ def restart_server(history, log, session):
 
 init_db()
 
-custom_css = """
-/* System notification pill styling */
-.system-notification {
-    background: rgba(0, 0, 0, 0.05);
-    color: #666;
-    padding: 6px 14px;
-    border-radius: 12px;
-    font-size: 0.85em;
-    font-weight: 500;
-    display: inline-block;
-    text-align: center;
-    margin: 8px auto;
-}
-/* Make the parent bubble transparent using :has() if possible */
-div[class*="message"]:has(.system-notification), 
-div[class*="bubble"]:has(.system-notification) {
-    background: transparent !important;
-    border: none !important;
-    box-shadow: none !important;
-    padding: 0 !important;
-    display: flex !important;
-    justify-content: center !important;
-    width: 100% !important;
-}
-"""
-
-with gr.Blocks(title="E2EE Chat Demo", css=custom_css) as app:
+with gr.Blocks(title="E2EE Chat Demo") as app:
     gr.Markdown("# E2EE Interactive  Chat")
     gr.Markdown(
         ""
