@@ -238,7 +238,7 @@ def send_message(message, history, log, session):
     log += f"  Nonce  (12 B)  : {nonce.hex()}\n"
     log += f"  Ciphertext ({len(ciphertext):>3} B): {ciphertext.hex()}\n"
     log += f"  Auth Tag (16 B): {tag.hex()}\n"
-    log += "\n-----------------------\n"
+    log += "-----------------------\n"
 
     # Write to DB (the "untrusted server")
     conn = _db()
@@ -295,7 +295,7 @@ def receive_messages(history, log, session):
         log += f"  Nonce  (12 B)  : {nonce.hex()}\n"
         log += f"  Ciphertext ({len(ciphertext):>3} B): {ciphertext.hex()}\n"
         log += f"  Auth Tag (16 B): {tag.hex()}\n"
-        log += "\n-----------------------\n"
+        log += "-----------------------\n"
 
         try:
             plaintext_bytes = crypto.decrypt(shared_key, nonce, ciphertext, tag)
@@ -312,7 +312,7 @@ def receive_messages(history, log, session):
             log += "  The old session key was destroyed and cannot be recovered!\n"
             log += "  (Please restart the python server to clear the SQLite DB)\n"
             history.append({"role": "assistant", "content": "[DECRYPTION FAILED]"})
-            log += "\n-----------------------\n"
+            log += "-----------------------\n"
 
         session["last_msg_id"] = msg_id
 
@@ -383,7 +383,7 @@ def regenerate_key(log, session):
     conn = _db()
     c = conn.cursor()
     c.execute(
-        "INSERT OR REPLACE INTO public_keys (user, pubkey) VALUES (?, ?)",
+        "INSERT OR REPLACE INTO public_keys (user, public_key) VALUES (?, ?)",
         (identity, pub_bytes),
     )
     conn.commit()
@@ -417,7 +417,7 @@ def restart_server(history, log, session):
         conn = _db()
         c = conn.cursor()
         c.execute(
-            "INSERT OR REPLACE INTO public_keys (user, pubkey) VALUES (?, ?)",
+            "INSERT OR REPLACE INTO public_keys (user, public_key) VALUES (?, ?)",
             (identity, pub_bytes),
         )
         conn.commit()
@@ -456,42 +456,38 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
 
     # ---- Client View (Alice / Bob) ----
     with gr.Column(visible=False) as client_view:
-        with gr.Tabs():
-            with gr.Tab("Chat"):
-                with gr.Row():
-                    with gr.Column(scale=1):
-                        chatbot = gr.Chatbot(label="Chat Window", height=550)
-                        with gr.Row(equal_height=True):
-                            msg_input = gr.Textbox(
-                                placeholder="Type a message…",
-                                show_label=False,
-                                scale=4,
-                                container=False
-                            )
-                            send_btn = gr.Button("Send", variant="primary", scale=1, min_width=80)
+        with gr.Row():
+            with gr.Column(scale=1):
+                chatbot = gr.Chatbot(label="Chat Window", height=550)
+                with gr.Row(equal_height=True):
+                    msg_input = gr.Textbox(
+                        placeholder="Type a message…",
+                        show_label=False,
+                        scale=4,
+                        container=False
+                    )
+                    send_btn = gr.Button("Send", variant="primary", scale=1, min_width=80)
 
+            with gr.Column(scale=1):
+                crypto_log = gr.Textbox(
+                    label="Crypto Log (Verbose)",
+                    lines=27,
+                    max_lines=27,
+                    interactive=False,
+                    autoscroll=True,
+                    elem_id="crypto_log_box",
+                )
 
-                    with gr.Column(scale=1):
-                        crypto_log = gr.Textbox(
-                            label="Crypto Log (Verbose)",
-                            lines=27,
-                            max_lines=27,
-                            interactive=False,
-                            autoscroll=True,
-                            elem_id="crypto_log_box",
-                        )
+        gr.Markdown("### Auto Refresh & Message Fetching")
+        with gr.Row():
+            refresh_btn = gr.Button("Check for New Messages", variant="primary", scale=2)
+            auto_refresh = gr.Checkbox(label="Auto Refresh", value=True, scale=1)
+        timer = gr.Timer(1, active=True)
 
-            with gr.Tab("Settings"):
-                gr.Markdown("### Auto Refresh & Message Fetching")
-                with gr.Row():
-                    refresh_btn = gr.Button("Check for New Messages", variant="primary", scale=2)
-                    auto_refresh = gr.Checkbox(label="Auto Refresh", value=True, scale=1)
-                timer = gr.Timer(1, active=True)
-
-                gr.Markdown("### Key Management & Server Maintenance")
-                with gr.Row():
-                    regen_key_btn = gr.Button("Regenerate Ephemeral Key", variant="secondary")
-                    reset_server_btn = gr.Button("Restart Server / Wipe DB", variant="stop")
+        gr.Markdown("### Key Management & Server Maintenance")
+        with gr.Row():
+            regen_key_btn = gr.Button("Regenerate Ephemeral Key", variant="secondary")
+            reset_server_btn = gr.Button("Restart Server / Wipe DB", variant="stop")
 
     # ---- Server View (Database Browser) ----
     with gr.Group(visible=False) as server_view:
