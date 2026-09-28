@@ -149,9 +149,10 @@ def login(identity, session, chatbot):
     row = c.fetchone()
     conn.close()
 
-    shared_key = None
+    peer_pub_bytes = None
     if row:
-        peer_pub_key = protocol.deserialize_public_key(row[0])
+        peer_pub_bytes = row[0]
+        peer_pub_key = protocol.deserialize_public_key(peer_pub_bytes)
         shared_key = crypto.derive_shared_key(priv_key, peer_pub_key)
         log += f"[{identity}] Found {peer}'s public key → derived shared AES-GCM session key\n"
         logger.info("%s derived shared key with %s", identity, peer)
@@ -171,6 +172,7 @@ def login(identity, session, chatbot):
         "identity": identity,
         "priv_key": priv_key,
         "shared_key": shared_key,
+        "peer_pub_bytes": peer_pub_bytes,
         "last_msg_id": last_msg_id,
         "previous_identity": identity,
     }
@@ -192,9 +194,9 @@ def login(identity, session, chatbot):
 # Derive shared key lazily (if peer joined after us)
 # ---------------------------------------------------------------------------
 
-def _ensure_shared_key(session, log):
-    """If we don't have the shared key yet, check the DB for the peer."""
-    if session.get("shared_key") is not None:
+def _sync_peer_key(session, log, history=None):
+    """If we don't have the shared key yet, or the peer changed their key, sync it."""
+    if not session or "identity" not in session:
         return session, log
 
     identity = session["identity"]
@@ -207,11 +209,23 @@ def _ensure_shared_key(session, log):
     conn.close()
 
     if row:
-        peer_pub_key = protocol.deserialize_public_key(row[0])
-        shared_key = crypto.derive_shared_key(session["priv_key"], peer_pub_key)
-        session["shared_key"] = shared_key
-        log += f"[{identity}] Found {peer}'s public key → derived shared AES-GCM session key\n"
-        logger.info("%s derived shared key with %s (lazy)", identity, peer)
+        peer_pub_bytes = row[0]
+        # Only derive a new shared key if we don't have one, or if the peer's public key changed
+        if session.get("shared_key") is None or session.get("peer_pub_bytes") != peer_pub_bytes:
+            peer_pub_key = protocol.deserialize_public_key(peer_pub_bytes)
+            shared_key = crypto.derive_shared_key(session["priv_key"], peer_pub_key)
+            
+            # If we ALREADY had a peer_pub_bytes and it changed, log it and append security message
+            if session.get("peer_pub_bytes") is not None and session.get("peer_pub_bytes") != peer_pub_bytes:
+                log += f"[{identity}] Detected {peer} changed their key. Derived new AES-GCM session key.\n"
+                if history is not None:
+                    history.append({"role": "assistant", "content": "🔒 Your security code changed."})
+            else:
+                log += f"[{identity}] Found {peer}'s public key → derived shared AES-GCM session key\n"
+                logger.info("%s derived shared key with %s", identity, peer)
+            
+            session["shared_key"] = shared_key
+            session["peer_pub_bytes"] = peer_pub_bytes
 
     return session, log
 
@@ -229,7 +243,7 @@ def send_message(message, history, log, session):
         return message, history, log, session
 
     identity = session["identity"]
-    session, log = _ensure_shared_key(session, log)
+    session, log = _sync_peer_key(session, log, history)
 
     if session.get("shared_key") is None:
         peer = "Bob" if identity == "Alice" else "Alice"
@@ -259,6 +273,7 @@ def send_message(message, history, log, session):
     conn.commit()
     conn.close()
     log += "  → Written to SQLite (untrusted server).\n"
+    log += "-----------------------\n"
 
     history.append({"role": "user", "content": message})
     return "", history, log, session
@@ -273,7 +288,7 @@ def receive_messages(history, log, session):
         return history, log, session
 
     identity = session["identity"]
-    session, log = _ensure_shared_key(session, log)
+    session, log = _sync_peer_key(session, log, history)
 
     if session.get("shared_key") is None:
         peer = "Bob" if identity == "Alice" else "Alice"
@@ -311,9 +326,11 @@ def receive_messages(history, log, session):
             plaintext = plaintext_bytes.decode("utf-8")
             log += f"  Decrypt + Auth : SUCCESS\n"
             log += f"  Plaintext      : {plaintext}\n"
+            log += "-----------------------\n"
             history.append({"role": "assistant", "content": plaintext})
         except Exception as e:
             log += f"  Decrypt + Auth : FAILED ({e})\n"
+            log += "-----------------------\n"
             log += "\n═══ KEY REGENERATION ═══\n"
             log += "  PERFECT FORWARD SECRECY IN ACTION:\n"
             log += "  This message was encrypted with a previous session key.\n"
@@ -405,7 +422,7 @@ def regenerate_key(log, session, chatbot):
     log += f"\n[{identity}] Regenerated fresh ephemeral ECDH keypair.\n"
     log += f"[{identity}] Saved new public key to server database ({len(pub_bytes)} bytes).\n"
 
-    session, log = _ensure_shared_key(session, log)
+    session, log = _sync_peer_key(session, log, chatbot)
     
     chatbot.append({"role": "assistant", "content": "🔒 Your security code changed."})
     
