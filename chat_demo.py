@@ -1,0 +1,604 @@
+import gradio as gr
+import sqlite3
+import datetime
+import os
+import re
+import pandas as pd
+
+from src import crypto
+from src import protocol
+from src.logger import get_logger
+
+logger = get_logger("chat")
+DB_FILE = "chat.db"
+
+
+def append_log(log_str, new_msg):
+    """Helper to append log messages and compress consecutive duplicates."""
+    new_msg = new_msg.strip()
+    if not new_msg:
+        return log_str
+        
+    lines = log_str.strip().split('\n')
+    if not lines or not lines[0]:
+        return new_msg + "\n"
+        
+    last_line = lines[-1]
+    
+    # Check if the last line is the same message (possibly with [xN times])
+    match = re.match(r"^(.*?) \[x(\d+) times\]$", last_line)
+    if match:
+        base_msg = match.group(1)
+        count = int(match.group(2))
+    else:
+        base_msg = last_line
+        count = 1
+        
+    if base_msg == new_msg:
+        # Increment the count and replace the last line
+        lines[-1] = f"{base_msg} [x{count + 1} times]"
+        return "\n".join(lines) + "\n"
+    else:
+        # New message, just append
+        if not log_str.endswith('\n') and log_str != "":
+            return log_str + "\n" + new_msg + "\n"
+        return log_str + new_msg + "\n"
+
+
+# ---------------------------------------------------------------------------
+# Database helpers
+# ---------------------------------------------------------------------------
+
+def init_db():
+    """Create tables if they don't exist and clear stale data on startup."""
+    conn = sqlite3.connect(DB_FILE)
+    c = conn.cursor()
+    c.execute("""CREATE TABLE IF NOT EXISTS public_keys
+                 (user TEXT PRIMARY KEY, public_key BLOB)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS messages
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  sender TEXT,
+                  nonce BLOB,
+                  ciphertext BLOB,
+                  tag BLOB,
+                  timestamp TEXT)""")
+    # Fresh session every time the server starts
+    c.execute("DELETE FROM public_keys")
+    c.execute("DELETE FROM messages")
+    conn.commit()
+    conn.close()
+    logger.info("Database initialised (tables cleared for new session).")
+
+
+def _db():
+    return sqlite3.connect(DB_FILE)
+
+
+# ---------------------------------------------------------------------------
+# Global State
+# ---------------------------------------------------------------------------
+
+ACTIVE_USERS = set()
+
+# ---------------------------------------------------------------------------
+# Login
+# ---------------------------------------------------------------------------
+
+def login(identity, session):
+    """Generate a keypair, store the public key, and try to derive the shared
+    secret if the peer has already registered."""
+
+    if not identity:
+        return (
+            gr.update(),        # client_view
+            gr.update(),        # server_view
+            [],                 # chatbot history
+            "",                 # crypto_log
+            "Please select an identity.",  # status
+            session,            # session state (unchanged)
+            gr.update(visible=True),  # identity_dd
+            gr.update(visible=True),  # login_btn
+            gr.update(visible=False), # logout_btn
+        )
+
+    if identity == "Database Browser":
+        return (
+            gr.update(visible=False),
+            gr.update(visible=True),
+            [],
+            "",
+            "Logged in as **Database Browser**",
+            session,
+            gr.update(visible=False),  # identity_dd
+            gr.update(visible=False),  # login_btn
+            gr.update(visible=True),   # logout_btn
+        )
+
+    # ---- Alice or Bob ----
+    if identity in ACTIVE_USERS and session.get("identity") != identity:
+        return (
+            gr.update(visible=False),
+            gr.update(visible=False),
+            [],
+            "",
+            f"Error: **{identity}** is already logged in on another browser! Please Logout first.",
+            session,
+            gr.update(visible=True),   # identity_dd
+            gr.update(visible=True),   # login_btn
+            gr.update(visible=False),  # logout_btn
+        )
+    ACTIVE_USERS.add(identity)
+
+    priv_key, pub_key = crypto.generate_keypair()
+    pub_bytes = protocol.serialize_public_key(pub_key)
+
+    conn = _db()
+    c = conn.cursor()
+    c.execute(
+        "INSERT OR REPLACE INTO public_keys (user, public_key) VALUES (?, ?)",
+        (identity, pub_bytes),
+    )
+    conn.commit()
+
+    log = f"[{identity}] Generated ephemeral ECDH keypair.\n"
+    log += f"[{identity}] Public key saved to database ({len(pub_bytes)} bytes).\n"
+
+    # Check if the peer already registered
+    peer = "Bob" if identity == "Alice" else "Alice"
+    c.execute("SELECT public_key FROM public_keys WHERE user = ?", (peer,))
+    row = c.fetchone()
+    conn.close()
+
+    shared_key = None
+    if row:
+        peer_pub_key = protocol.deserialize_public_key(row[0])
+        shared_key = crypto.derive_shared_key(priv_key, peer_pub_key)
+        log += f"[{identity}] Found {peer}'s public key → derived shared AES-GCM session key\n"
+        logger.info("%s derived shared key with %s", identity, peer)
+    else:
+        log += f"[{identity}] Waiting for {peer} to join…\n"
+
+    # Store everything that belongs to THIS browser tab in gr.State
+    session = {
+        "identity": identity,
+        "priv_key": priv_key,
+        "shared_key": shared_key,
+        "last_msg_id": 0,
+    }
+
+    return (
+        gr.update(visible=True),   # client_view
+        gr.update(visible=False),  # server_view
+        [],                        # chatbot (fresh)
+        log,                       # crypto_log
+        f"Logged in as **{identity}**",
+        session,
+        gr.update(visible=False),  # identity_dd
+        gr.update(visible=False),  # login_btn
+        gr.update(visible=True),   # logout_btn
+    )
+
+
+# ---------------------------------------------------------------------------
+# Derive shared key lazily (if peer joined after us)
+# ---------------------------------------------------------------------------
+
+def _ensure_shared_key(session, log):
+    """If we don't have the shared key yet, check the DB for the peer."""
+    if session.get("shared_key") is not None:
+        return session, log
+
+    identity = session["identity"]
+    peer = "Bob" if identity == "Alice" else "Alice"
+
+    conn = _db()
+    c = conn.cursor()
+    c.execute("SELECT public_key FROM public_keys WHERE user = ?", (peer,))
+    row = c.fetchone()
+    conn.close()
+
+    if row:
+        peer_pub_key = protocol.deserialize_public_key(row[0])
+        shared_key = crypto.derive_shared_key(session["priv_key"], peer_pub_key)
+        session["shared_key"] = shared_key
+        log += f"[{identity}] Found {peer}'s public key → derived shared AES-GCM session key\n"
+        logger.info("%s derived shared key with %s (lazy)", identity, peer)
+
+    return session, log
+
+
+# ---------------------------------------------------------------------------
+# Send
+# ---------------------------------------------------------------------------
+
+def send_message(message, history, log, session):
+    if not message or not message.strip():
+        return "", history, log, session
+
+    if not session or "identity" not in session:
+        log += "Not logged in.\n"
+        return message, history, log, session
+
+    identity = session["identity"]
+    session, log = _ensure_shared_key(session, log)
+
+    if session.get("shared_key") is None:
+        peer = "Bob" if identity == "Alice" else "Alice"
+        log = append_log(log, f"[{identity}] Cannot encrypt — {peer} has not joined yet.")
+        return message, history, log, session
+
+    shared_key = session["shared_key"]
+
+    # Encrypt
+    plaintext = message.encode("utf-8")
+    nonce, ciphertext, tag = crypto.encrypt(shared_key, plaintext)
+
+    log += "\n═══ SENDING MESSAGE ═══\n"
+    log += f"  Plaintext      : {message}\n"
+    log += f"  Nonce  (12 B)  : {nonce.hex()}\n"
+    log += f"  Ciphertext ({len(ciphertext):>3} B): {ciphertext.hex()}\n"
+    log += f"  Auth Tag (16 B): {tag.hex()}\n"
+    log += "\n-----------------------\n"
+
+    # Write to DB (the "untrusted server")
+    conn = _db()
+    c = conn.cursor()
+    c.execute(
+        "INSERT INTO messages (sender, nonce, ciphertext, tag, timestamp) VALUES (?,?,?,?,?)",
+        (identity, nonce, ciphertext, tag, datetime.datetime.now().isoformat()),
+    )
+    conn.commit()
+    conn.close()
+    log += "  → Written to SQLite (untrusted server).\n"
+
+    history.append({"role": "user", "content": message})
+    return "", history, log, session
+
+
+# ---------------------------------------------------------------------------
+# Receive
+# ---------------------------------------------------------------------------
+
+def receive_messages(history, log, session):
+    if not session or "identity" not in session:
+        return history, log, session
+
+    identity = session["identity"]
+    session, log = _ensure_shared_key(session, log)
+
+    if session.get("shared_key") is None:
+        peer = "Bob" if identity == "Alice" else "Alice"
+        log = append_log(log, f"[{identity}] Cannot decrypt — {peer} has not joined yet.")
+        return history, log, session
+
+    shared_key = session["shared_key"]
+    last_id = session["last_msg_id"]
+    peer = "Bob" if identity == "Alice" else "Alice"
+
+    conn = _db()
+    c = conn.cursor()
+    c.execute(
+        "SELECT id, nonce, ciphertext, tag FROM messages "
+        "WHERE sender = ? AND id > ? ORDER BY id ASC",
+        (peer, last_id),
+    )
+    rows = c.fetchall()
+    conn.close()
+
+    if not rows:
+        log = append_log(log, f"\n[{identity}] No new messages from {peer}.\n")
+        return history, log, session
+
+    for msg_id, nonce, ciphertext, tag in rows:
+        log += "\n═══ RECEIVING MESSAGE ═══\n"
+        log += f"  DB Row ID      : {msg_id}\n"
+        log += f"  Nonce  (12 B)  : {nonce.hex()}\n"
+        log += f"  Ciphertext ({len(ciphertext):>3} B): {ciphertext.hex()}\n"
+        log += f"  Auth Tag (16 B): {tag.hex()}\n"
+        log += "\n-----------------------\n"
+
+        try:
+            plaintext_bytes = crypto.decrypt(shared_key, nonce, ciphertext, tag)
+            plaintext = plaintext_bytes.decode("utf-8")
+            log += f"  Decrypt + Auth : SUCCESS\n"
+            log += f"  Plaintext      : {plaintext}\n"
+            history.append({"role": "assistant", "content": plaintext})
+        except Exception as e:
+            log += f"  Decrypt + Auth : FAILED ({e})\n"
+            log += "\n═══ KEY REGENERATION ═══\n"
+            log += "  PERFECT FORWARD SECRECY IN ACTION:\n"
+            log += "  This message was encrypted with a previous session key.\n"
+            log += "  Because you logged out, a new ephemeral keypair was generated.\n"
+            log += "  The old session key was destroyed and cannot be recovered!\n"
+            log += "  (Please restart the python server to clear the SQLite DB)\n"
+            history.append({"role": "assistant", "content": "[DECRYPTION FAILED]"})
+            log += "\n-----------------------\n"
+
+        session["last_msg_id"] = msg_id
+
+    return history, log, session
+
+
+# ---------------------------------------------------------------------------
+# Database Browser (Server View)
+# ---------------------------------------------------------------------------
+
+def view_db():
+    conn = _db()
+    c = conn.cursor()
+
+    c.execute("SELECT user, hex(public_key) FROM public_keys")
+    keys = c.fetchall()
+
+    c.execute(
+        "SELECT id, sender, hex(nonce), hex(ciphertext), hex(tag), timestamp "
+        "FROM messages ORDER BY id DESC LIMIT 50"
+    )
+    msgs = c.fetchall()
+    conn.close()
+
+    # Format data for gr.Dataframe
+    keys_df = pd.DataFrame(
+        [(u, f"{pk[:40]}...") for u, pk in keys],
+        columns=["User", "Public Key (Hex, truncated)"]
+    )
+    
+    msgs_df = pd.DataFrame(
+        [(mid, sender, f"{nonce[:16]}...", f"{ct[:20]}...", tag, ts) for mid, sender, nonce, ct, tag, ts in msgs],
+        columns=["ID", "Sender", "Nonce", "Ciphertext", "Tag", "Time"]
+    )
+
+    return keys_df, msgs_df
+
+
+def logout(session):
+    identity = session.get("identity")
+    if identity in ACTIVE_USERS:
+        ACTIVE_USERS.remove(identity)
+    return (
+        gr.update(visible=False),
+        gr.update(visible=False),
+        [],
+        "",
+        "Logged out.",
+        {},
+        gr.update(visible=True),
+        gr.update(visible=True),
+        gr.update(visible=False),
+    )
+
+
+def regenerate_key(log, session):
+    if not session or "identity" not in session:
+        return log, session
+
+    identity = session["identity"]
+    priv_key, pub_key = crypto.generate_keypair()
+    pub_bytes = protocol.serialize_public_key(pub_key)
+
+    session["priv_key"] = priv_key
+    session["pub_bytes"] = pub_bytes
+    session["shared_key"] = None
+
+    conn = _db()
+    c = conn.cursor()
+    c.execute(
+        "INSERT OR REPLACE INTO public_keys (user, pubkey) VALUES (?, ?)",
+        (identity, pub_bytes),
+    )
+    conn.commit()
+    conn.close()
+
+    log += f"\n[{identity}] Regenerated fresh ephemeral ECDH keypair.\n"
+    log += f"[{identity}] Saved new public key to server database ({len(pub_bytes)} bytes).\n"
+
+    session, log = _ensure_shared_key(session, log)
+    return log, session
+
+
+def restart_server(history, log, session):
+    init_db()
+    ACTIVE_USERS.clear()
+
+    log += "\n══════ SERVER RESTARTED ══════\n"
+    log += "  Database tables (public_keys, messages) have been wiped.\n"
+    log += "  All active user sessions cleared.\n"
+
+    if session and "identity" in session:
+        identity = session["identity"]
+        priv_key, pub_key = crypto.generate_keypair()
+        pub_bytes = protocol.serialize_public_key(pub_key)
+        session["priv_key"] = priv_key
+        session["pub_bytes"] = pub_bytes
+        session["shared_key"] = None
+        session["last_msg_id"] = 0
+        ACTIVE_USERS.add(identity)
+
+        conn = _db()
+        c = conn.cursor()
+        c.execute(
+            "INSERT OR REPLACE INTO public_keys (user, pubkey) VALUES (?, ?)",
+            (identity, pub_bytes),
+        )
+        conn.commit()
+        conn.close()
+        log += f"  [{identity}] Re-registered new keypair on fresh database.\n"
+
+    return [], log, session
+
+
+# ---------------------------------------------------------------------------
+# UI
+# ---------------------------------------------------------------------------
+
+init_db()
+
+with gr.Blocks(title="E2EE Chat Demo") as app:
+    gr.Markdown("# E2EE Interactive  Chat")
+    gr.Markdown(
+        ""
+        ""
+    )
+
+    # Per-tab session state (keys, identity, cursor)
+    session = gr.State(value={})
+
+    with gr.Row(equal_height=True):
+        identity_dd = gr.Dropdown(
+            choices=["Alice", "Bob", "Database Browser"],
+            label="Select Identity",
+            scale=2
+        )
+        login_btn = gr.Button("Login", variant="primary", scale=1)
+        logout_btn = gr.Button("Logout", variant="secondary", scale=1, visible=False)
+
+    login_status = gr.Markdown()
+
+    # ---- Client View (Alice / Bob) ----
+    with gr.Column(visible=False) as client_view:
+        with gr.Tabs():
+            with gr.Tab("Chat"):
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        chatbot = gr.Chatbot(label="Chat Window", height=550)
+                        with gr.Row(equal_height=True):
+                            msg_input = gr.Textbox(
+                                placeholder="Type a message…",
+                                show_label=False,
+                                scale=4,
+                                container=False
+                            )
+                            send_btn = gr.Button("Send", variant="primary", scale=1, min_width=80)
+
+
+                    with gr.Column(scale=1):
+                        crypto_log = gr.Textbox(
+                            label="Crypto Log (Verbose)",
+                            lines=27,
+                            max_lines=27,
+                            interactive=False,
+                            autoscroll=True,
+                            elem_id="crypto_log_box",
+                        )
+
+            with gr.Tab("Settings"):
+                gr.Markdown("### Auto Refresh & Message Fetching")
+                with gr.Row():
+                    refresh_btn = gr.Button("Check for New Messages", variant="primary", scale=2)
+                    auto_refresh = gr.Checkbox(label="Auto Refresh", value=True, scale=1)
+                timer = gr.Timer(1, active=True)
+
+                gr.Markdown("### Key Management & Server Maintenance")
+                with gr.Row():
+                    regen_key_btn = gr.Button("Regenerate Ephemeral Key", variant="secondary")
+                    reset_server_btn = gr.Button("Restart Server / Wipe DB", variant="stop")
+
+    # ---- Server View (Database Browser) ----
+    with gr.Group(visible=False) as server_view:
+        gr.Markdown("## Untrusted Server View (Database Browser)")
+        gr.Markdown(
+            "This simulates what the server can see. "
+            "Notice it only holds **encrypted ciphertexts** and **nonces** — no plaintext."
+        )
+        with gr.Row():
+            refresh_db_btn = gr.Button("Refresh Database View", variant="primary", scale=2)
+            db_auto_refresh = gr.Checkbox(label="Auto Refresh", value=True, scale=1)
+            
+        db_timer = gr.Timer(1, active=True)
+        
+        gr.Markdown("### Public Keys Table")
+        db_keys_df = gr.Dataframe(interactive=False)
+        gr.Markdown("### Messages Table")
+        db_msgs_df = gr.Dataframe(interactive=False)
+
+    # ---- Event wiring ----
+    regen_key_btn.click(
+        fn=regenerate_key,
+        inputs=[crypto_log, session],
+        outputs=[crypto_log, session],
+    )
+
+    reset_server_btn.click(
+        fn=restart_server,
+        inputs=[chatbot, crypto_log, session],
+        outputs=[chatbot, crypto_log, session],
+    )
+
+    crypto_log.change(
+        fn=None,
+        inputs=None,
+        outputs=None,
+        js="""
+        function() {
+            setTimeout(function() {
+                var el = document.querySelector('#crypto_log_box textarea');
+                if (el) {
+                    el.scrollTop = el.scrollHeight;
+                }
+            }, 100);
+        }
+        """
+    )
+
+    login_btn.click(
+        fn=login,
+        inputs=[identity_dd, session],
+        outputs=[client_view, server_view, chatbot, crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
+    )
+
+    logout_btn.click(
+        fn=logout,
+        inputs=[session],
+        outputs=[client_view, server_view, chatbot, crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
+    )
+
+    send_btn.click(
+        fn=send_message,
+        inputs=[msg_input, chatbot, crypto_log, session],
+        outputs=[msg_input, chatbot, crypto_log, session],
+    )
+
+    msg_input.submit(
+        fn=send_message,
+        inputs=[msg_input, chatbot, crypto_log, session],
+        outputs=[msg_input, chatbot, crypto_log, session],
+    )
+
+    refresh_btn.click(
+        fn=receive_messages,
+        inputs=[chatbot, crypto_log, session],
+        outputs=[chatbot, crypto_log, session],
+    )
+
+    auto_refresh.change(
+        fn=lambda active: gr.Timer(active=active),
+        inputs=[auto_refresh],
+        outputs=[timer]
+    )
+    
+    timer.tick(
+        fn=receive_messages,
+        inputs=[chatbot, crypto_log, session],
+        outputs=[chatbot, crypto_log, session],
+    )
+
+    db_auto_refresh.change(
+        fn=lambda active: gr.Timer(active=active),
+        inputs=[db_auto_refresh],
+        outputs=[db_timer]
+    )
+
+    db_timer.tick(
+        fn=view_db,
+        inputs=[],
+        outputs=[db_keys_df, db_msgs_df],
+    )
+
+    refresh_db_btn.click(
+        fn=view_db,
+        inputs=[],
+        outputs=[db_keys_df, db_msgs_df],
+    )
+
+if __name__ == "__main__":
+    app.launch()
