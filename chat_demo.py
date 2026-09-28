@@ -449,7 +449,35 @@ def view_db():
     thr_df = metrics_df.dropna(subset=["Throughput (KB/s)"])
     thr_fig = px.scatter(thr_df, x="Message Size (Bytes)", y="Throughput (KB/s)", color="Action", title="Throughput vs Message Size", trendline="ols" if len(thr_df) > 1 else None)
 
-    return keys_df, msgs_df, metrics_df, enc_fig, dec_fig, lat_fig, thr_fig
+        if not enc_df.empty:
+        enc_agg = enc_df.groupby("Message Size (Bytes)")["Encryption Time (ms)"].agg(["median", "std"]).reset_index().fillna(0)
+        enc_agg_fig = px.line(enc_agg, x="Message Size (Bytes)", y="median", error_y="std", title="Encryption Time (Median ± Std)", markers=True, log_x=True)
+        enc_agg_fig.update_yaxes(title_text="Time (ms)")
+    else:
+        enc_agg_fig = px.line(title="Encryption Time (Median ± Std)")
+
+    if not dec_df.empty:
+        dec_agg = dec_df.groupby("Message Size (Bytes)")["Decryption Time (ms)"].agg(["median", "std"]).reset_index().fillna(0)
+        dec_agg_fig = px.line(dec_agg, x="Message Size (Bytes)", y="median", error_y="std", title="Decryption Time (Median ± Std)", markers=True, log_x=True)
+        dec_agg_fig.update_yaxes(title_text="Time (ms)")
+    else:
+        dec_agg_fig = px.line(title="Decryption Time (Median ± Std)")
+
+    if not lat_df.empty:
+        lat_agg = lat_df.groupby("Message Size (Bytes)")["Latency (ms)"].agg(["median", "std"]).reset_index().fillna(0)
+        lat_agg_fig = px.line(lat_agg, x="Message Size (Bytes)", y="median", error_y="std", title="End-to-End Latency (Median ± Std)", markers=True, log_x=True)
+        lat_agg_fig.update_yaxes(title_text="Latency (ms)")
+    else:
+        lat_agg_fig = px.line(title="End-to-End Latency (Median ± Std)")
+        
+    if not thr_df.empty:
+        thr_agg = thr_df.groupby(["Message Size (Bytes)", "Action"])["Throughput (KB/s)"].agg(["median", "std"]).reset_index().fillna(0)
+        thr_agg_fig = px.line(thr_agg, x="Message Size (Bytes)", y="median", error_y="std", color="Action", title="Throughput (Median ± Std)", markers=True, log_x=True)
+        thr_agg_fig.update_yaxes(title_text="Throughput (KB/s)")
+    else:
+        thr_agg_fig = px.line(title="Throughput (Median ± Std)")
+
+    return keys_df, msgs_df, metrics_df, enc_fig, dec_fig, lat_fig, thr_fig, enc_agg_fig, dec_agg_fig, lat_agg_fig, thr_agg_fig
 
 
 def logout(session, chatbot):
@@ -646,6 +674,18 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                 with gr.Column():
                     throughput_plot = gr.Plot(label="Throughput vs Message Size")
             
+            with gr.Accordion("📈 Aggregated Analysis (Median ± Std Dev)", open=True):
+                with gr.Row():
+                    with gr.Column():
+                        enc_agg_plot = gr.Plot(label="Encryption Time (Median ± Std)")
+                    with gr.Column():
+                        dec_agg_plot = gr.Plot(label="Decryption Time (Median ± Std)")
+                with gr.Row():
+                    with gr.Column():
+                        lat_agg_plot = gr.Plot(label="End-to-End Latency (Median ± Std)")
+                    with gr.Column():
+                        thr_agg_plot = gr.Plot(label="Throughput (Median ± Std)")
+
             with gr.Accordion("📊 Metrics Table", open=False):
                 perf_metrics_df = gr.Dataframe(interactive=False, wrap=True)
 
@@ -729,13 +769,13 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     db_timer.tick(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot, enc_agg_plot, dec_agg_plot, lat_agg_plot, thr_agg_plot],
     )
 
     refresh_db_btn.click(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot, enc_agg_plot, dec_agg_plot, lat_agg_plot, thr_agg_plot],
     )
     
     perf_auto_refresh.change(
@@ -747,20 +787,20 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     perf_timer.tick(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot, enc_agg_plot, dec_agg_plot, lat_agg_plot, thr_agg_plot],
     )
 
     refresh_perf_btn.click(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot, enc_agg_plot, dec_agg_plot, lat_agg_plot, thr_agg_plot],
     )
 
     # Fetch data immediately on page load
     app.load(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot, enc_agg_plot, dec_agg_plot, lat_agg_plot, thr_agg_plot],
     )
 
 if __name__ == "__main__":
