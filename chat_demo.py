@@ -269,7 +269,9 @@ def send_message(message, history, log, session):
     log += f"  Nonce  (12 B)  : {nonce.hex()}\n"
     log += f"  Ciphertext ({len(ciphertext):>3} B): {ciphertext.hex()}\n"
     log += f"  Auth Tag (16 B): {tag.hex()}\n"
-    log += f"  Performance    : Encrypt={enc_time_ms:.3f} ms | Throughput={throughput_kbs:.1f} KB/s\n"
+    log += "  [ Performance Metrics ]\n"
+    log += f"  ├─ Encrypt Time : {enc_time_ms:.3f} ms\n"
+    log += f"  └─ Throughput   : {throughput_kbs:.1f} KB/s\n"
     log += "-----------------------\n"
 
     logger.info(f"[{identity}] Sending encrypted message to untrusted server.")
@@ -352,7 +354,10 @@ def receive_messages(history, log, session):
             logger.debug(f"Decrypted plaintext: '{plaintext}'")
             log += f"  Decrypt + Auth : SUCCESS\n"
             log += f"  Plaintext      : {plaintext}\n"
-            log += f"  Performance    : Decrypt={dec_time_ms:.3f} ms | Throughput={throughput_kbs:.1f} KB/s | Latency={e2e_latency_ms:.1f} ms\n"
+            log += "  [ Performance Metrics ]\n"
+            log += f"  ├─ Decrypt Time : {dec_time_ms:.3f} ms\n"
+            log += f"  ├─ Throughput   : {throughput_kbs:.1f} KB/s\n"
+            log += f"  └─ E2E Latency  : {e2e_latency_ms:.1f} ms\n"
             log += "-----------------------\n"
             history.append({"role": "assistant", "content": plaintext})
         except Exception as e:
