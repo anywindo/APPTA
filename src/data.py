@@ -6,9 +6,13 @@ import config
 class DataWriter:
     def __init__(self, filename=None):
         if filename is None:
-            tz_utc_7 = datetime.timezone(datetime.timedelta(hours=7))
-            now = datetime.datetime.now(tz_utc_7).strftime('%Y%m%d_%H%M%S')
-            filename = f"results_{now}.csv"
+            if "E2E_RUN_FOLDER" in os.environ:
+                filename = os.path.join(os.environ["E2E_RUN_FOLDER"], "results.csv")
+            else:
+                tz_utc_7 = datetime.timezone(datetime.timedelta(hours=7))
+                now = datetime.datetime.now(tz_utc_7).strftime('%Y%m%d_%H%M%S')
+                os.makedirs("results", exist_ok=True)
+                filename = f"results/results_{now}.csv"
             
         self.filename = filename
         self.file = open(self.filename, mode='w', newline='')

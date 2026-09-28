@@ -38,6 +38,13 @@ def compute_aggregation(df):
     # Sort by message size to ensure plots and tables are ordered
     grouped = grouped.sort_values('message_size_bytes').reset_index(drop=True)
     
+    # Add converted columns for plotting
+    for agg in agg_funcs:
+        grouped[f"encryption_time_ms_{agg}"] = grouped[f"encryption_time_ns_{agg}"] / 1_000_000
+        grouped[f"decryption_time_ms_{agg}"] = grouped[f"decryption_time_ns_{agg}"] / 1_000_000
+        grouped[f"latency_ms_{agg}"] = grouped[f"latency_ns_{agg}"] / 1_000_000
+        grouped[f"throughput_KB_s_{agg}"] = grouped[f"throughput_bytes_per_s_{agg}"] / 1024
+        
     return grouped
 
 def export_summary_table(aggregated, output_path):
@@ -78,28 +85,52 @@ def generate_all_plots(aggregated_df, output_dir):
     
     plots_config = [
         {
+            "metric": "encryption_time_ms",
+            "y_label": "Time (ms)",
+            "title": "Encryption Time vs Message Size (ms)",
+            "filename": "plot_encryption_time.png"
+        },
+        {
             "metric": "encryption_time_ns",
             "y_label": "Time (nanoseconds)",
-            "title": "Encryption Time vs Message Size",
-            "filename": "plot_encryption_time.png"
+            "title": "Encryption Time vs Message Size (ns)",
+            "filename": "plot_encryption_time_ns.png"
+        },
+        {
+            "metric": "decryption_time_ms",
+            "y_label": "Time (ms)",
+            "title": "Decryption Time vs Message Size (ms)",
+            "filename": "plot_decryption_time.png"
         },
         {
             "metric": "decryption_time_ns",
             "y_label": "Time (nanoseconds)",
-            "title": "Decryption Time vs Message Size",
-            "filename": "plot_decryption_time.png"
+            "title": "Decryption Time vs Message Size (ns)",
+            "filename": "plot_decryption_time_ns.png"
+        },
+        {
+            "metric": "latency_ms",
+            "y_label": "Latency (ms)",
+            "title": "End-to-End Latency vs Message Size (ms)",
+            "filename": "plot_latency.png"
         },
         {
             "metric": "latency_ns",
             "y_label": "Latency (nanoseconds)",
-            "title": "End-to-End Latency vs Message Size",
-            "filename": "plot_latency.png"
+            "title": "End-to-End Latency vs Message Size (ns)",
+            "filename": "plot_latency_ns.png"
+        },
+        {
+            "metric": "throughput_KB_s",
+            "y_label": "Throughput (KB/s)",
+            "title": "Throughput vs Message Size (KB/s)",
+            "filename": "plot_throughput.png"
         },
         {
             "metric": "throughput_bytes_per_s",
             "y_label": "Throughput (Bytes/s)",
-            "title": "Throughput vs Message Size",
-            "filename": "plot_throughput.png"
+            "title": "Throughput vs Message Size (Bytes/s)",
+            "filename": "plot_throughput_bytes.png"
         }
     ]
     
@@ -130,7 +161,9 @@ def main():
     
     # Export summary
     base_name = os.path.basename(args.csv_path)
-    if base_name.startswith("results_"):
+    if base_name == "results.csv":
+        summary_name = "summary.csv"
+    elif base_name.startswith("results_"):
         summary_name = base_name.replace("results_", "summary_", 1)
     else:
         summary_name = f"summary_{base_name}"

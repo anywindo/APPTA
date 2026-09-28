@@ -564,16 +564,81 @@ def restart_server(history, log, session):
 
 
 
+
+def update_pt_plots(df, plot_type, trendline, log_x, log_y):
+    import plotly.express as px
+    if df is None or df.empty:
+        return None, None, None, None
+
+    t_mode = None if trendline == "None" else trendline.lower()
+
+    if plot_type == "Line (Aggregated)":
+        # Group by and get median/std
+        enc_agg = df.groupby("Message Size (Bytes)")["Encryption Time (ms)"].agg(["median", "std"]).reset_index().fillna(0)
+        enc_fig = px.line(enc_agg, x="Message Size (Bytes)", y="median", error_y="std", title="Encryption Time", markers=True, log_x=log_x, log_y=log_y)
+        
+        dec_agg = df.groupby("Message Size (Bytes)")["Decryption Time (ms)"].agg(["median", "std"]).reset_index().fillna(0)
+        dec_fig = px.line(dec_agg, x="Message Size (Bytes)", y="median", error_y="std", title="Decryption Time", markers=True, log_x=log_x, log_y=log_y)
+        
+        lat_agg = df.groupby("Message Size (Bytes)")["Latency (ms)"].agg(["median", "std"]).reset_index().fillna(0)
+        lat_fig = px.line(lat_agg, x="Message Size (Bytes)", y="median", error_y="std", title="End-to-End Latency", markers=True, log_x=log_x, log_y=log_y)
+        
+        thr_agg = df.groupby("Message Size (Bytes)")["Throughput (KB/s)"].agg(["median", "std"]).reset_index().fillna(0)
+        thr_fig = px.line(thr_agg, x="Message Size (Bytes)", y="median", error_y="std", title="Throughput", markers=True, log_x=log_x, log_y=log_y)
+    else:
+        # Scatter
+        enc_fig = px.scatter(df, x="Message Size (Bytes)", y="Encryption Time (ms)", title="Encryption Time", trendline=t_mode, log_x=log_x, log_y=log_y)
+        dec_fig = px.scatter(df, x="Message Size (Bytes)", y="Decryption Time (ms)", title="Decryption Time", trendline=t_mode, log_x=log_x, log_y=log_y)
+        lat_fig = px.scatter(df, x="Message Size (Bytes)", y="Latency (ms)", title="End-to-End Latency", trendline=t_mode, log_x=log_x, log_y=log_y)
+        thr_fig = px.scatter(df, x="Message Size (Bytes)", y="Throughput (KB/s)", title="Throughput", trendline=t_mode, log_x=log_x, log_y=log_y)
+
+    enc_fig.update_yaxes(title_text="Time (ms)")
+    dec_fig.update_yaxes(title_text="Time (ms)")
+    lat_fig.update_yaxes(title_text="Latency (ms)")
+    thr_fig.update_yaxes(title_text="Throughput (KB/s)")
+
+    return enc_fig, dec_fig, lat_fig, thr_fig
+
 def run_planned_testing():
     import subprocess
+    import os
     try:
         result = subprocess.run(["python", "run_e2e.py"], capture_output=True, text=True, timeout=120)
         output = result.stdout
         if result.stderr:
             output += "\\nSTDERR:\\n" + result.stderr
-        return output
+            
+        import pandas as pd
+        import glob
+        import plotly.express as px
+        base = os.path.abspath("results")
+        
+        # Find the newest run folder
+        run_folders = [f for f in glob.glob(os.path.join(base, "run_*")) if os.path.isdir(f)]
+        
+        df = None
+        enc_fig, dec_fig, lat_fig, thr_fig = None, None, None, None
+        
+        if run_folders:
+            latest_folder = max(run_folders, key=os.path.getctime)
+            latest_file = os.path.join(latest_folder, "results.csv")
+            
+            if os.path.exists(latest_file):
+                df = pd.read_csv(latest_file)
+            
+            if not df.empty:
+                df["Encryption Time (ms)"] = df["encryption_time_ns"] / 1_000_000
+                df["Decryption Time (ms)"] = df["decryption_time_ns"] / 1_000_000
+                df["Latency (ms)"] = df["latency_ns"] / 1_000_000
+                df["Throughput (KB/s)"] = df["throughput_bytes_per_s"] / 1_024
+                df["Message Size (Bytes)"] = df["message_size_bytes"]
+
+                # Initial plots (Line, log_x=True)
+                enc_fig, dec_fig, lat_fig, thr_fig = update_pt_plots(df, "Line (Aggregated)", "None", True, False)
+
+        return output, enc_fig, dec_fig, lat_fig, thr_fig, df, df
     except Exception as e:
-        return f"Error running planned testing: {str(e)}"
+        return f"Error running planned testing: {str(e)}", None, None, None, None, None, None
 
 # ---------------------------------------------------------------------------
 # UI
@@ -646,20 +711,7 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
 
 
 
-        # ---- Planned Testing View ----
-        with gr.Tab("Planned Testing"):
-            gr.Markdown("## Planned Testing (E2E Benchmark)")
-            gr.Markdown("Run the automated benchmark suite to test End-to-End messaging performance. This executes `run_e2e.py` without requiring Alice or Bob to be logged in.")
-            run_test_btn = gr.Button("Run E2E Test", variant="primary")
-            
-            with gr.Row():
-                pt_enc_img = gr.Image(label="Encryption Time", interactive=False, type="filepath")
-                pt_dec_img = gr.Image(label="Decryption Time", interactive=False, type="filepath")
-            with gr.Row():
-                pt_lat_img = gr.Image(label="End-to-End Latency", interactive=False, type="filepath")
-                pt_thr_img = gr.Image(label="Throughput", interactive=False, type="filepath")
-
-            test_output = gr.Textbox(label="Test Output", interactive=False, lines=15)
+        
 
         # ---- Server View (Database Browser) ----
         with gr.Tab("Database Browser"):
@@ -719,6 +771,34 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
 
             with gr.Accordion("📊 Metrics Table", open=False):
                 perf_metrics_df = gr.Dataframe(interactive=False, wrap=True)
+
+
+            # ---- Planned Testing View ----
+        with gr.Tab("Planned Testing"):
+            gr.Markdown("## Planned Testing (E2E Benchmark)")
+            gr.Markdown("Run the automated benchmark suite to test End-to-End messaging performance. This executes `run_e2e.py` without requiring Alice or Bob to be logged in.")
+            
+            with gr.Tabs():
+                with gr.Tab("Test and Output"):
+                    run_test_btn = gr.Button("Run E2E Test", variant="primary")
+                    test_output = gr.Textbox(label="Test Output", interactive=False, lines=15)
+                    
+                with gr.Tab("Raw Result"):
+                    pt_results_df = gr.Dataframe(label="Results", interactive=False, wrap=True)
+                    
+                with gr.Tab("Performance"):
+                    pt_dataframe_state = gr.State(None)
+                    with gr.Row():
+                        pt_plot_type = gr.Radio(["Line (Aggregated)", "Scatter (Raw)"], label="Plot Type", value="Line (Aggregated)")
+                        pt_trendline = gr.Dropdown(["None", "OLS", "LOWESS"], label="Trendline (Scatter only)", value="None")
+                        pt_log_x = gr.Checkbox(label="Log X-Axis", value=True)
+                        pt_log_y = gr.Checkbox(label="Log Y-Axis", value=False)
+                    with gr.Row():
+                        pt_enc_img = gr.Plot(label="Encryption Time")
+                        pt_dec_img = gr.Plot(label="Decryption Time")
+                    with gr.Row():
+                        pt_lat_img = gr.Plot(label="End-to-End Latency")
+                        pt_thr_img = gr.Plot(label="Throughput")
 
     # ---- Event wiring ----
     regen_key_btn.click(
@@ -828,10 +908,18 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     )
 
 
+# Planned Testing Interactive Plots
+    for control in [pt_plot_type, pt_trendline, pt_log_x, pt_log_y]:
+        control.change(
+            fn=update_pt_plots,
+            inputs=[pt_dataframe_state, pt_plot_type, pt_trendline, pt_log_x, pt_log_y],
+            outputs=[pt_enc_img, pt_dec_img, pt_lat_img, pt_thr_img]
+        )
+
     run_test_btn.click(
         fn=run_planned_testing,
         inputs=[],
-        outputs=[test_output, pt_enc_img, pt_dec_img, pt_lat_img, pt_thr_img]
+        outputs=[test_output, pt_enc_img, pt_dec_img, pt_lat_img, pt_thr_img, pt_results_df, pt_dataframe_state]
     )
 
     # Fetch data immediately on page load
@@ -842,4 +930,5 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     )
 
 if __name__ == "__main__":
-    app.launch()
+    import os
+    app.launch(allowed_paths=[os.path.abspath("results")])
