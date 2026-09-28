@@ -84,7 +84,7 @@ ACTIVE_USERS = set()
 # Login
 # ---------------------------------------------------------------------------
 
-def login(identity, session):
+def login(identity, session, chatbot):
     """Generate a keypair, store the public key, and try to derive the shared
     secret if the peer has already registered."""
 
@@ -92,7 +92,7 @@ def login(identity, session):
         return (
             gr.update(),        # client_view
             gr.update(),        # server_view
-            [],                 # chatbot history
+            chatbot,            # chatbot history
             "",                 # crypto_log
             "Please select an identity.",  # status
             session,            # session state (unchanged)
@@ -105,7 +105,7 @@ def login(identity, session):
         return (
             gr.update(visible=False),
             gr.update(visible=True),
-            [],
+            chatbot,
             "",
             "Logged in as **Database Browser**",
             session,
@@ -119,7 +119,7 @@ def login(identity, session):
         return (
             gr.update(visible=False),
             gr.update(visible=False),
-            [],
+            chatbot,
             "",
             f"Error: **{identity}** is already logged in on another browser! Please Logout first.",
             session,
@@ -158,18 +158,27 @@ def login(identity, session):
     else:
         log += f"[{identity}] Waiting for {peer} to join…\n"
 
+    previous_identity = session.get("previous_identity")
+    if identity == previous_identity:
+        last_msg_id = session.get("last_msg_id", 0)
+        chatbot.append({"role": "assistant", "content": "🔒 Your security code changed."})
+    else:
+        last_msg_id = 0
+        chatbot = []
+
     # Store everything that belongs to THIS browser tab in gr.State
     session = {
         "identity": identity,
         "priv_key": priv_key,
         "shared_key": shared_key,
-        "last_msg_id": 0,
+        "last_msg_id": last_msg_id,
+        "previous_identity": identity,
     }
 
     return (
         gr.update(visible=True),   # client_view
         gr.update(visible=False),  # server_view
-        [],                        # chatbot (fresh)
+        chatbot,                   # chatbot history
         log,                       # crypto_log
         f"Logged in as **{identity}**",
         session,
@@ -351,14 +360,18 @@ def view_db():
     return keys_df, msgs_df
 
 
-def logout(session):
+def logout(session, chatbot):
     identity = session.get("identity")
     if identity in ACTIVE_USERS:
         ACTIVE_USERS.remove(identity)
+    
+    if identity:
+        session["previous_identity"] = identity
+        
     return (
         gr.update(visible=False),
         gr.update(visible=False),
-        [],
+        chatbot,
         "",
         "Logged out.",
         {},
@@ -368,9 +381,9 @@ def logout(session):
     )
 
 
-def regenerate_key(log, session):
+def regenerate_key(log, session, chatbot):
     if not session or "identity" not in session:
-        return log, session
+        return log, session, chatbot
 
     identity = session["identity"]
     priv_key, pub_key = crypto.generate_keypair()
@@ -393,7 +406,10 @@ def regenerate_key(log, session):
     log += f"[{identity}] Saved new public key to server database ({len(pub_bytes)} bytes).\n"
 
     session, log = _ensure_shared_key(session, log)
-    return log, session
+    
+    chatbot.append({"role": "assistant", "content": "🔒 Your security code changed."})
+    
+    return log, session, chatbot
 
 
 def restart_server(history, log, session):
@@ -510,8 +526,8 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     # ---- Event wiring ----
     regen_key_btn.click(
         fn=regenerate_key,
-        inputs=[crypto_log, session],
-        outputs=[crypto_log, session],
+        inputs=[crypto_log, session, chatbot],
+        outputs=[crypto_log, session, chatbot],
     )
 
     reset_server_btn.click(
@@ -538,13 +554,13 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
 
     login_btn.click(
         fn=login,
-        inputs=[identity_dd, session],
+        inputs=[identity_dd, session, chatbot],
         outputs=[client_view, server_view, chatbot, crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
     )
 
     logout_btn.click(
         fn=logout,
-        inputs=[session],
+        inputs=[session, chatbot],
         outputs=[client_view, server_view, chatbot, crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
     )
 
