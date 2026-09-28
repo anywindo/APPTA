@@ -753,5 +753,12 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
         outputs=[db_keys_df, db_msgs_df, perf_metrics_df, latency_plot, proc_time_plot, throughput_plot],
     )
 
+    # Fetch data immediately on page load
+    app.load(
+        fn=view_db,
+        inputs=[],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, latency_plot, proc_time_plot, throughput_plot],
+    )
+
 if __name__ == "__main__":
     app.launch()
