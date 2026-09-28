@@ -574,7 +574,7 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                             elem_id="crypto_log_box",
                         )
 
-                with gr.Accordion("Settings", open=False):
+                with gr.Accordion("Settings", open=True):
                     with gr.Row():
                         with gr.Column():
                             gr.Markdown("#### Auto Refresh & Message Fetching")
