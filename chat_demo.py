@@ -79,6 +79,7 @@ def _db():
 # Global State
 # ---------------------------------------------------------------------------
 
+ACTIVE_USERS = {}  # dict mapping identity to last_seen timestamp
 
 # ---------------------------------------------------------------------------
 # Login
@@ -102,6 +103,21 @@ def login(identity, session, chatbot):
 
 
     # ---- Alice or Bob ----
+    if identity in ACTIVE_USERS and session.get("identity") != identity:
+        last_seen = ACTIVE_USERS.get(identity, 0)
+        # If the user was active in the last 5 seconds, reject the login
+        if time.time() - last_seen < 5:
+            return (
+                gr.update(visible=False),
+                chatbot,
+                "",
+                f"Error: **{identity}** is already logged in on another browser! Please Logout first.",
+                session,
+                gr.update(visible=True),   # identity_dd
+                gr.update(visible=True),   # login_btn
+                gr.update(visible=False),  # logout_btn
+            )
+    ACTIVE_USERS[identity] = time.time()
 
     priv_key, pub_key = crypto.generate_keypair()
     pub_bytes = protocol.serialize_public_key(pub_key)
@@ -162,6 +178,10 @@ def login(identity, session, chatbot):
         gr.update(visible=False),  # login_btn
         gr.update(visible=True),   # logout_btn
     )
+
+def ping_heartbeat(session):
+    if session and "identity" in session:
+        ACTIVE_USERS[session["identity"]] = time.time()
 
 
 # ---------------------------------------------------------------------------
@@ -385,6 +405,9 @@ def view_db():
 
 def logout(session, chatbot):
     identity = session.get("identity")
+    if identity in ACTIVE_USERS:
+        del ACTIVE_USERS[identity]
+    
     if identity:
         session["previous_identity"] = identity
         
@@ -551,6 +574,13 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                 db_msgs_df = gr.Dataframe(interactive=False, wrap=True)
 
     # ---- Event wiring ----
+    heartbeat_timer = gr.Timer(2, active=True)
+    heartbeat_timer.tick(
+        fn=ping_heartbeat,
+        inputs=[session],
+        outputs=[],
+    )
+
     regen_key_btn.click(
         fn=regenerate_key,
         inputs=[crypto_log, session, chatbot],
