@@ -63,9 +63,18 @@ def init_db():
                   ciphertext BLOB,
                   tag BLOB,
                   timestamp TEXT)""")
+    c.execute("""CREATE TABLE IF NOT EXISTS performance_metrics
+                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
+                  message_id INTEGER,
+                  action TEXT,
+                  latency_ms REAL,
+                  throughput_kbs REAL,
+                  processing_time_ms REAL,
+                  timestamp TEXT)""")
     # Fresh session every time the server starts
     c.execute("DELETE FROM public_keys")
     c.execute("DELETE FROM messages")
+    c.execute("DELETE FROM performance_metrics")
     conn.commit()
     conn.close()
     logger.info("Database initialised (tables cleared for new session).")
@@ -79,7 +88,7 @@ def _db():
 # Global State
 # ---------------------------------------------------------------------------
 
-ACTIVE_USERS = {}  # dict mapping identity to last_seen timestamp
+ACTIVE_USERS = set()
 
 # ---------------------------------------------------------------------------
 # Login
@@ -104,20 +113,17 @@ def login(identity, session, chatbot):
 
     # ---- Alice or Bob ----
     if identity in ACTIVE_USERS and session.get("identity") != identity:
-        last_seen = ACTIVE_USERS.get(identity, 0)
-        # If the user was active in the last 5 seconds, reject the login
-        if time.time() - last_seen < 5:
-            return (
-                gr.update(visible=False),
-                chatbot,
-                "",
-                f"Error: **{identity}** is already logged in on another browser! Please Logout first.",
-                session,
-                gr.update(visible=True),   # identity_dd
-                gr.update(visible=True),   # login_btn
-                gr.update(visible=False),  # logout_btn
-            )
-    ACTIVE_USERS[identity] = time.time()
+        return (
+            gr.update(visible=False),
+            chatbot,
+            "",
+            f"Error: **{identity}** is already logged in on another browser! Please Logout first.",
+            session,
+            gr.update(visible=True),   # identity_dd
+            gr.update(visible=True),   # login_btn
+            gr.update(visible=False),  # logout_btn
+        )
+    ACTIVE_USERS.add(identity)
 
     priv_key, pub_key = crypto.generate_keypair()
     pub_bytes = protocol.serialize_public_key(pub_key)
@@ -178,10 +184,6 @@ def login(identity, session, chatbot):
         gr.update(visible=False),  # login_btn
         gr.update(visible=True),   # logout_btn
     )
-
-def ping_heartbeat(session):
-    if session and "identity" in session:
-        ACTIVE_USERS[session["identity"]] = time.time()
 
 
 # ---------------------------------------------------------------------------
@@ -277,6 +279,14 @@ def send_message(message, history, log, session):
         "INSERT INTO messages (sender, nonce, ciphertext, tag, timestamp) VALUES (?,?,?,?,?)",
         (identity, nonce, ciphertext, tag, datetime.datetime.now().isoformat()),
     )
+    msg_id = c.lastrowid
+    
+    # Store encryption metric
+    c.execute(
+        "INSERT INTO performance_metrics (message_id, action, processing_time_ms, throughput_kbs, timestamp) VALUES (?, ?, ?, ?, ?)",
+        (msg_id, "encrypt", enc_time_ms, throughput_kbs, datetime.datetime.now().isoformat())
+    )
+    
     conn.commit()
     conn.close()
     log += "  → Written to SQLite (untrusted server).\n"
@@ -343,6 +353,16 @@ def receive_messages(history, log, session):
                 sent_time = datetime.datetime.fromisoformat(ts_str)
                 e2e_latency_ms = (datetime.datetime.now() - sent_time).total_seconds() * 1000
 
+            # Store decryption metric
+            conn2 = _db()
+            c2 = conn2.cursor()
+            c2.execute(
+                "INSERT INTO performance_metrics (message_id, action, latency_ms, processing_time_ms, throughput_kbs, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+                (msg_id, "decrypt", e2e_latency_ms, dec_time_ms, throughput_kbs, datetime.datetime.now().isoformat())
+            )
+            conn2.commit()
+            conn2.close()
+
             logger.info(f"[{identity}] Successfully decrypted message (ID: {msg_id}) from {peer}.")
             logger.debug(f"Decrypted plaintext: '{plaintext}'")
             log += f"  Decrypt + Auth : SUCCESS\n"
@@ -406,7 +426,7 @@ def view_db():
 def logout(session, chatbot):
     identity = session.get("identity")
     if identity in ACTIVE_USERS:
-        del ACTIVE_USERS[identity]
+        ACTIVE_USERS.remove(identity)
     
     if identity:
         session["previous_identity"] = identity
@@ -574,13 +594,6 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                 db_msgs_df = gr.Dataframe(interactive=False, wrap=True)
 
     # ---- Event wiring ----
-    heartbeat_timer = gr.Timer(2, active=True)
-    heartbeat_timer.tick(
-        fn=ping_heartbeat,
-        inputs=[session],
-        outputs=[],
-    )
-
     regen_key_btn.click(
         fn=regenerate_key,
         inputs=[crypto_log, session, chatbot],
