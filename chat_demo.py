@@ -583,7 +583,7 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     )
 
     auto_refresh.change(
-        fn=lambda active: gr.Timer(active=active),
+        fn=lambda active: gr.update(active=active),
         inputs=[auto_refresh],
         outputs=[timer]
     )
@@ -595,7 +595,7 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     )
 
     db_auto_refresh.change(
-        fn=lambda active: gr.Timer(active=active),
+        fn=lambda active: gr.update(active=active),
         inputs=[db_auto_refresh],
         outputs=[db_timer]
     )
