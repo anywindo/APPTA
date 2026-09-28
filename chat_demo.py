@@ -92,7 +92,6 @@ def login(identity, session, chatbot):
     if not identity:
         return (
             gr.update(),        # client_view
-            gr.update(),        # server_view
             chatbot,            # chatbot history
             "",                 # crypto_log
             "Please select an identity.",  # status
@@ -102,23 +101,10 @@ def login(identity, session, chatbot):
             gr.update(visible=False), # logout_btn
         )
 
-    if identity == "Database Browser":
-        return (
-            gr.update(visible=False),
-            gr.update(visible=True),
-            chatbot,
-            "",
-            "Logged in as **Database Browser**",
-            session,
-            gr.update(visible=False),  # identity_dd
-            gr.update(visible=False),  # login_btn
-            gr.update(visible=True),   # logout_btn
-        )
 
     # ---- Alice or Bob ----
     if identity in ACTIVE_USERS and session.get("identity") != identity:
         return (
-            gr.update(visible=False),
             gr.update(visible=False),
             chatbot,
             "",
@@ -181,7 +167,6 @@ def login(identity, session, chatbot):
 
     return (
         gr.update(visible=True),   # client_view
-        gr.update(visible=False),  # server_view
         chatbot,                   # chatbot history
         log,                       # crypto_log
         f"Logged in as **{identity}**",
@@ -421,7 +406,6 @@ def logout(session, chatbot):
         
     return (
         gr.update(visible=False),
-        gr.update(visible=False),
         chatbot,
         "",
         "Logged out.",
@@ -511,71 +495,73 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     # Per-tab session state (keys, identity, cursor)
     session = gr.State(value={})
 
-    with gr.Row(equal_height=True):
-        identity_dd = gr.Dropdown(
-            choices=["Alice", "Bob", "Database Browser"],
-            label="Select Identity",
-            scale=3
-        )
-        login_status = gr.Markdown(value="", scale=3)
-        login_btn = gr.Button("Login", variant="primary", scale=1)
-        logout_btn = gr.Button("Logout", variant="secondary", scale=1, visible=False)
+    with gr.Tabs():
+        with gr.Tab("Chat Client"):
+            with gr.Row(equal_height=True):
+                identity_dd = gr.Dropdown(
+                    choices=["Alice", "Bob"],
+                    label="Select Identity",
+                    scale=3
+                )
+                login_status = gr.Markdown(value="", scale=3)
+                login_btn = gr.Button("Login", variant="primary", scale=1)
+                logout_btn = gr.Button("Logout", variant="secondary", scale=1, visible=False)
 
-    # ---- Client View (Alice / Bob) ----
-    with gr.Column(visible=False) as client_view:
-        with gr.Row():
-            with gr.Column(scale=1):
-                chatbot = gr.Chatbot(label="Chat Window", height=550, group_consecutive_messages=False)
-                with gr.Row(equal_height=True):
-                    msg_input = gr.Textbox(
-                        placeholder="Type a message…",
-                        show_label=False,
-                        scale=4,
-                        container=False
+            # ---- Client View (Alice / Bob) ----
+            with gr.Column(visible=False) as client_view:
+                with gr.Row():
+                    with gr.Column(scale=1):
+                        chatbot = gr.Chatbot(label="Chat Window", height=550, group_consecutive_messages=False)
+                        with gr.Row(equal_height=True):
+                            msg_input = gr.Textbox(
+                                placeholder="Type a message…",
+                                show_label=False,
+                                scale=4,
+                                container=False
+                            )
+                            send_btn = gr.Button("Send", variant="primary", scale=1, min_width=80)
+
+                    with gr.Column(scale=1):
+                        crypto_log = gr.Textbox(
+                            label="Crypto Log (Verbose)",
+                            lines=27,
+                            max_lines=27,
+                            interactive=False,
+                            autoscroll=True,
+                            elem_id="crypto_log_box",
+                        )
+
+                gr.Markdown("### Auto Refresh & Message Fetching")
+                with gr.Row():
+                    refresh_btn = gr.Button("Check for New Messages", variant="primary", scale=2)
+                    auto_refresh = gr.Checkbox(label="Auto Refresh", value=True, scale=1)
+                timer = gr.Timer(1, active=True)
+
+                gr.Markdown("### Key Management & Server Maintenance")
+                with gr.Row():
+                    regen_key_btn = gr.Button("Regenerate Ephemeral Key", variant="secondary")
+                    reset_server_btn = gr.Button("Restart Server / Wipe DB", variant="stop")
+
+        # ---- Server View (Database Browser) ----
+        with gr.Tab("Database Browser"):
+            with gr.Row(equal_height=True):
+                with gr.Column(scale=3):
+                    gr.Markdown("## 🗄️ Untrusted Server View (Database Browser)")
+                    gr.Markdown(
+                        "This simulates what the server can see. "
+                        "Notice it only holds **encrypted ciphertexts** and **nonces** — no plaintext."
                     )
-                    send_btn = gr.Button("Send", variant="primary", scale=1, min_width=80)
-
-            with gr.Column(scale=1):
-                crypto_log = gr.Textbox(
-                    label="Crypto Log (Verbose)",
-                    lines=27,
-                    max_lines=27,
-                    interactive=False,
-                    autoscroll=True,
-                    elem_id="crypto_log_box",
-                )
-
-        gr.Markdown("### Auto Refresh & Message Fetching")
-        with gr.Row():
-            refresh_btn = gr.Button("Check for New Messages", variant="primary", scale=2)
-            auto_refresh = gr.Checkbox(label="Auto Refresh", value=True, scale=1)
-        timer = gr.Timer(1, active=True)
-
-        gr.Markdown("### Key Management & Server Maintenance")
-        with gr.Row():
-            regen_key_btn = gr.Button("Regenerate Ephemeral Key", variant="secondary")
-            reset_server_btn = gr.Button("Restart Server / Wipe DB", variant="stop")
-
-    # ---- Server View (Database Browser) ----
-    with gr.Group(visible=False) as server_view:
-        with gr.Row(equal_height=True):
-            with gr.Column(scale=3):
-                gr.Markdown("## 🗄️ Untrusted Server View (Database Browser)")
-                gr.Markdown(
-                    "This simulates what the server can see. "
-                    "Notice it only holds **encrypted ciphertexts** and **nonces** — no plaintext."
-                )
-            with gr.Column(scale=1):
-                refresh_db_btn = gr.Button("🔄 Refresh Database View", variant="primary")
-                db_auto_refresh = gr.Checkbox(label="Auto Refresh (1s)", value=True)
+                with gr.Column(scale=1):
+                    refresh_db_btn = gr.Button("🔄 Refresh Database View", variant="primary")
+                    db_auto_refresh = gr.Checkbox(label="Auto Refresh (1s)", value=True)
+                
+            db_timer = gr.Timer(1, active=True)
             
-        db_timer = gr.Timer(1, active=True)
-        
-        with gr.Accordion("🔑 Public Keys Table", open=True):
-            db_keys_df = gr.Dataframe(interactive=False, wrap=True)
-            
-        with gr.Accordion("✉️ Messages Table", open=True):
-            db_msgs_df = gr.Dataframe(interactive=False, wrap=True)
+            with gr.Accordion("🔑 Public Keys Table", open=True):
+                db_keys_df = gr.Dataframe(interactive=False, wrap=True)
+                
+            with gr.Accordion("✉️ Messages Table", open=True):
+                db_msgs_df = gr.Dataframe(interactive=False, wrap=True)
 
     # ---- Event wiring ----
     regen_key_btn.click(
@@ -609,13 +595,13 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     login_btn.click(
         fn=login,
         inputs=[identity_dd, session, chatbot],
-        outputs=[client_view, server_view, chatbot, crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
+        outputs=[client_view, chatbot, crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
     )
 
     logout_btn.click(
         fn=logout,
         inputs=[session, chatbot],
-        outputs=[client_view, server_view, chatbot, crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
+        outputs=[client_view, chatbot, crypto_log, login_status, session, identity_dd, login_btn, logout_btn],
     )
 
     send_btn.click(
