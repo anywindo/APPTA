@@ -150,6 +150,7 @@ def login(identity, session, chatbot):
     conn.close()
 
     peer_pub_bytes = None
+    shared_key = None
     if row:
         peer_pub_bytes = row[0]
         peer_pub_key = protocol.deserialize_public_key(peer_pub_bytes)
