@@ -531,20 +531,20 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                             elem_id="crypto_log_box",
                         )
 
-
-
-        # ---- Settings Tab ----
-        with gr.Tab("Settings"):
-            gr.Markdown("### Auto Refresh & Message Fetching")
-            with gr.Row():
-                refresh_btn = gr.Button("Check for New Messages", variant="primary", scale=2)
-                auto_refresh = gr.Checkbox(label="Auto Refresh", value=True, scale=1)
-            timer = gr.Timer(1, active=True)
-
-            gr.Markdown("### Key Management & Server Maintenance")
-            with gr.Row():
-                regen_key_btn = gr.Button("Regenerate Ephemeral Key", variant="secondary")
-                reset_server_btn = gr.Button("Restart Server / Wipe DB", variant="stop")
+                with gr.Accordion("⚙️ Client Settings & Server Maintenance", open=False):
+                    with gr.Row():
+                        with gr.Column():
+                            gr.Markdown("#### Auto Refresh & Message Fetching")
+                            with gr.Row():
+                                refresh_btn = gr.Button("Check for New Messages", variant="primary")
+                                auto_refresh = gr.Checkbox(label="Auto Refresh", value=True)
+                            timer = gr.Timer(1, active=True)
+                            
+                        with gr.Column():
+                            gr.Markdown("#### Key Management & Server Maintenance")
+                            with gr.Row():
+                                regen_key_btn = gr.Button("Regenerate Ephemeral Key", variant="secondary")
+                                reset_server_btn = gr.Button("Restart Server / Wipe DB", variant="stop")
 
         # ---- Server View (Database Browser) ----
         with gr.Tab("Database Browser"):
