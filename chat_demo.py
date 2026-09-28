@@ -432,7 +432,7 @@ def view_db():
         columns=["ID", "Message ID", "Action", "Latency (ms)", "Throughput (KB/s)", "Processing Time (ms)", "Time"]
     )
 
-    return keys_df, msgs_df, metrics_df
+    return keys_df, msgs_df, metrics_df, metrics_df, metrics_df, metrics_df
 
 
 def logout(session, chatbot):
@@ -617,7 +617,39 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                     
             perf_timer = gr.Timer(1, active=True)
             
-            with gr.Accordion("📊 Metrics Table", open=True):
+            with gr.Row():
+                with gr.Column():
+                    latency_plot = gr.LinePlot(
+                        x="Message ID",
+                        y="Latency (ms)",
+                        title="End-to-End Latency over Messages (Decryption Only)",
+                        tooltip=["Message ID", "Latency (ms)"],
+                        width=400,
+                        height=300
+                    )
+                with gr.Column():
+                    proc_time_plot = gr.LinePlot(
+                        x="Message ID",
+                        y="Processing Time (ms)",
+                        color="Action",
+                        title="Processing Time (Encrypt vs Decrypt)",
+                        tooltip=["Message ID", "Action", "Processing Time (ms)"],
+                        width=400,
+                        height=300
+                    )
+            
+            with gr.Row():
+                throughput_plot = gr.LinePlot(
+                        x="Message ID",
+                        y="Throughput (KB/s)",
+                        color="Action",
+                        title="Throughput over Messages",
+                        tooltip=["Message ID", "Action", "Throughput (KB/s)"],
+                        width=800,
+                        height=300
+                    )
+            
+            with gr.Accordion("📊 Metrics Table", open=False):
                 perf_metrics_df = gr.Dataframe(interactive=False, wrap=True)
 
     # ---- Event wiring ----
@@ -700,13 +732,13 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     db_timer.tick(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, latency_plot, proc_time_plot, throughput_plot],
     )
 
     refresh_db_btn.click(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, latency_plot, proc_time_plot, throughput_plot],
     )
     
     perf_auto_refresh.change(
@@ -718,13 +750,13 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     perf_timer.tick(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, latency_plot, proc_time_plot, throughput_plot],
     )
 
     refresh_perf_btn.click(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, latency_plot, proc_time_plot, throughput_plot],
     )
 
 if __name__ == "__main__":
