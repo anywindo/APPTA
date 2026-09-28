@@ -163,7 +163,7 @@ def login(identity, session, chatbot):
     previous_identity = session.get("previous_identity")
     if identity == previous_identity:
         last_msg_id = session.get("last_msg_id", 0)
-        chatbot.append({"role": "assistant", "content": "🔒 Your security code changed."})
+        chatbot.append({"role": "assistant", "content": "<div class='system-notification'>🔒 Your security code changed.</div>"})
     else:
         last_msg_id = 0
         chatbot = []
@@ -220,7 +220,7 @@ def _sync_peer_key(session, log, history=None):
             if session.get("peer_pub_bytes") is not None and session.get("peer_pub_bytes") != peer_pub_bytes:
                 log += f"[{identity}] Detected {peer} changed their key. Derived new AES-GCM session key.\n"
                 if history is not None:
-                    history.append({"role": "assistant", "content": "🔒 Your security code changed."})
+                    history.append({"role": "assistant", "content": "<div class='system-notification'>🔒 Your security code changed.</div>"})
             else:
                 log += f"[{identity}] Found {peer}'s public key → derived shared AES-GCM session key\n"
                 logger.info("%s derived shared key with %s", identity, peer)
@@ -432,7 +432,7 @@ def regenerate_key(log, session, chatbot):
 
     session, log = _sync_peer_key(session, log, chatbot)
     
-    chatbot.append({"role": "assistant", "content": "🔒 Your security code changed."})
+    chatbot.append({"role": "assistant", "content": "<div class='system-notification'>🔒 Your security code changed.</div>"})
     
     return log, session, chatbot
 
@@ -474,7 +474,33 @@ def restart_server(history, log, session):
 
 init_db()
 
-with gr.Blocks(title="E2EE Chat Demo") as app:
+custom_css = """
+/* System notification pill styling */
+.system-notification {
+    background: rgba(0, 0, 0, 0.05);
+    color: #666;
+    padding: 6px 14px;
+    border-radius: 12px;
+    font-size: 0.85em;
+    font-weight: 500;
+    display: inline-block;
+    text-align: center;
+    margin: 8px auto;
+}
+/* Make the parent bubble transparent using :has() if possible */
+div[class*="message"]:has(.system-notification), 
+div[class*="bubble"]:has(.system-notification) {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    display: flex !important;
+    justify-content: center !important;
+    width: 100% !important;
+}
+"""
+
+with gr.Blocks(title="E2EE Chat Demo", css=custom_css) as app:
     gr.Markdown("# E2EE Interactive  Chat")
     gr.Markdown(
         ""
