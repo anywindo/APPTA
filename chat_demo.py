@@ -66,6 +66,7 @@ def init_db():
     c.execute("""CREATE TABLE IF NOT EXISTS performance_metrics
                  (id INTEGER PRIMARY KEY AUTOINCREMENT,
                   message_id INTEGER,
+                  message_size_bytes INTEGER,
                   action TEXT,
                   latency_ms REAL,
                   throughput_kbs REAL,
@@ -283,8 +284,8 @@ def send_message(message, history, log, session):
     
     # Store encryption metric
     c.execute(
-        "INSERT INTO performance_metrics (message_id, action, processing_time_ms, throughput_kbs, timestamp) VALUES (?, ?, ?, ?, ?)",
-        (msg_id, "encrypt", enc_time_ms, throughput_kbs, datetime.datetime.now().isoformat())
+        "INSERT INTO performance_metrics (message_id, message_size_bytes, action, processing_time_ms, throughput_kbs, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
+        (msg_id, len(plaintext), "encrypt", enc_time_ms, throughput_kbs, datetime.datetime.now().isoformat())
     )
     
     conn.commit()
@@ -357,8 +358,8 @@ def receive_messages(history, log, session):
             conn2 = _db()
             c2 = conn2.cursor()
             c2.execute(
-                "INSERT INTO performance_metrics (message_id, action, latency_ms, processing_time_ms, throughput_kbs, timestamp) VALUES (?, ?, ?, ?, ?, ?)",
-                (msg_id, "decrypt", e2e_latency_ms, dec_time_ms, throughput_kbs, datetime.datetime.now().isoformat())
+                "INSERT INTO performance_metrics (message_id, message_size_bytes, action, latency_ms, processing_time_ms, throughput_kbs, timestamp) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (msg_id, len(plaintext_bytes), "decrypt", e2e_latency_ms, dec_time_ms, throughput_kbs, datetime.datetime.now().isoformat())
             )
             conn2.commit()
             conn2.close()
@@ -409,7 +410,7 @@ def view_db():
     msgs = c.fetchall()
 
     c.execute(
-        "SELECT id, message_id, action, latency_ms, throughput_kbs, processing_time_ms, timestamp "
+        "SELECT id, message_id, message_size_bytes, action, latency_ms, throughput_kbs, processing_time_ms, timestamp "
         "FROM performance_metrics ORDER BY id DESC LIMIT 50"
     )
     metrics = c.fetchall()
@@ -429,10 +430,13 @@ def view_db():
 
     metrics_df = pd.DataFrame(
         metrics,
-        columns=["ID", "Message ID", "Action", "Latency (ms)", "Throughput (KB/s)", "Processing Time (ms)", "Time"]
+        columns=["ID", "Message ID", "Message Size (Bytes)", "Action", "Latency (ms)", "Throughput (KB/s)", "Processing Time (ms)", "Time"]
     )
+    
+    metrics_df["Encryption Time (ms)"] = metrics_df.apply(lambda row: row["Processing Time (ms)"] if row["Action"] == "encrypt" else None, axis=1)
+    metrics_df["Decryption Time (ms)"] = metrics_df.apply(lambda row: row["Processing Time (ms)"] if row["Action"] == "decrypt" else None, axis=1)
 
-    return keys_df, msgs_df, metrics_df, metrics_df, metrics_df, metrics_df
+    return keys_df, msgs_df, metrics_df, metrics_df, metrics_df, metrics_df, metrics_df
 
 
 def logout(session, chatbot):
@@ -619,28 +623,35 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
             
             with gr.Row():
                 with gr.Column():
-                    latency_plot = gr.LinePlot(
-                        x="Message ID",
-                        y="Latency (ms)",
-                        title="End-to-End Latency over Messages (Decryption Only)",
-                        tooltip=["Message ID", "Latency (ms)"]
+                    enc_time_plot = gr.ScatterPlot(
+                        x="Message Size (Bytes)",
+                        y="Encryption Time (ms)",
+                        title="Encryption Time vs Message Size",
+                        tooltip=["Message Size (Bytes)", "Encryption Time (ms)"]
                     )
                 with gr.Column():
-                    proc_time_plot = gr.LinePlot(
-                        x="Message ID",
-                        y="Processing Time (ms)",
-                        color="Action",
-                        title="Processing Time (Encrypt vs Decrypt)",
-                        tooltip=["Message ID", "Action", "Processing Time (ms)"]
+                    dec_time_plot = gr.ScatterPlot(
+                        x="Message Size (Bytes)",
+                        y="Decryption Time (ms)",
+                        title="Decryption Time vs Message Size",
+                        tooltip=["Message Size (Bytes)", "Decryption Time (ms)"]
                     )
             
             with gr.Row():
-                throughput_plot = gr.LinePlot(
-                        x="Message ID",
+                with gr.Column():
+                    latency_plot = gr.ScatterPlot(
+                        x="Message Size (Bytes)",
+                        y="Latency (ms)",
+                        title="End-to-End Latency vs Message Size",
+                        tooltip=["Message Size (Bytes)", "Latency (ms)"]
+                    )
+                with gr.Column():
+                    throughput_plot = gr.ScatterPlot(
+                        x="Message Size (Bytes)",
                         y="Throughput (KB/s)",
                         color="Action",
-                        title="Throughput over Messages",
-                        tooltip=["Message ID", "Action", "Throughput (KB/s)"]
+                        title="Throughput vs Message Size",
+                        tooltip=["Message Size (Bytes)", "Action", "Throughput (KB/s)"]
                     )
             
             with gr.Accordion("📊 Metrics Table", open=False):
@@ -726,13 +737,13 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     db_timer.tick(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, latency_plot, proc_time_plot, throughput_plot],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot],
     )
 
     refresh_db_btn.click(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, latency_plot, proc_time_plot, throughput_plot],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot],
     )
     
     perf_auto_refresh.change(
@@ -744,20 +755,20 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     perf_timer.tick(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, latency_plot, proc_time_plot, throughput_plot],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot],
     )
 
     refresh_perf_btn.click(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, latency_plot, proc_time_plot, throughput_plot],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot],
     )
 
     # Fetch data immediately on page load
     app.load(
         fn=view_db,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, latency_plot, proc_time_plot, throughput_plot],
+        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot],
     )
 
 if __name__ == "__main__":
