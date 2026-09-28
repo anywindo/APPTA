@@ -449,7 +449,7 @@ def view_db():
     thr_df = metrics_df.dropna(subset=["Throughput (KB/s)"])
     thr_fig = px.scatter(thr_df, x="Message Size (Bytes)", y="Throughput (KB/s)", color="Action", title="Throughput vs Message Size", trendline="ols" if len(thr_df) > 1 else None)
 
-        if not enc_df.empty:
+    if not enc_df.empty:
         enc_agg = enc_df.groupby("Message Size (Bytes)")["Encryption Time (ms)"].agg(["median", "std"]).reset_index().fillna(0)
         enc_agg_fig = px.line(enc_agg, x="Message Size (Bytes)", y="median", error_y="std", title="Encryption Time (Median ± Std)", markers=True, log_x=True)
         enc_agg_fig.update_yaxes(title_text="Time (ms)")
@@ -563,6 +563,20 @@ def restart_server(history, log, session):
     return [], log, session
 
 
+
+def run_planned_testing():
+    import subprocess
+    try:
+        result = subprocess.run(["python", "run_e2e.py"], capture_output=True, text=True, timeout=120)
+        output = result.stdout
+        if result.stderr:
+            output += "
+STDERR:
+" + result.stderr
+        return output
+    except Exception as e:
+        return f"Error running planned testing: {str(e)}"
+
 # ---------------------------------------------------------------------------
 # UI
 # ---------------------------------------------------------------------------
@@ -629,6 +643,12 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                             with gr.Row():
                                 regen_key_btn = gr.Button("Regenerate Ephemeral Key", variant="secondary")
                                 reset_server_btn = gr.Button("Restart Server / Wipe DB", variant="stop")
+
+
+            with gr.Accordion("Planned Testing (E2E Benchmark)", open=False):
+                gr.Markdown("Run the automated benchmark suite to test End-to-End messaging performance. This executes `run_e2e.py` without requiring Alice or Bob to be logged in.")
+                run_test_btn = gr.Button("Run E2E Test", variant="primary")
+                test_output = gr.Textbox(label="Test Output", interactive=False, lines=15)
 
         # ---- Server View (Database Browser) ----
         with gr.Tab("Database Browser"):
@@ -794,6 +814,13 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
         fn=view_db,
         inputs=[],
         outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot, enc_agg_plot, dec_agg_plot, lat_agg_plot, thr_agg_plot],
+    )
+
+
+    run_test_btn.click(
+        fn=run_planned_testing,
+        inputs=[],
+        outputs=[test_output]
     )
 
     # Fetch data immediately on page load
