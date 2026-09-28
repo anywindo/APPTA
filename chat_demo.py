@@ -570,9 +570,7 @@ def run_planned_testing():
         result = subprocess.run(["python", "run_e2e.py"], capture_output=True, text=True, timeout=120)
         output = result.stdout
         if result.stderr:
-            output += "
-STDERR:
-" + result.stderr
+            output += "\\nSTDERR:\\n" + result.stderr
         return output
     except Exception as e:
         return f"Error running planned testing: {str(e)}"
@@ -645,10 +643,23 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
                                 reset_server_btn = gr.Button("Restart Server / Wipe DB", variant="stop")
 
 
-            with gr.Accordion("Planned Testing (E2E Benchmark)", open=False):
-                gr.Markdown("Run the automated benchmark suite to test End-to-End messaging performance. This executes `run_e2e.py` without requiring Alice or Bob to be logged in.")
-                run_test_btn = gr.Button("Run E2E Test", variant="primary")
-                test_output = gr.Textbox(label="Test Output", interactive=False, lines=15)
+
+
+
+        # ---- Planned Testing View ----
+        with gr.Tab("Planned Testing"):
+            gr.Markdown("## Planned Testing (E2E Benchmark)")
+            gr.Markdown("Run the automated benchmark suite to test End-to-End messaging performance. This executes `run_e2e.py` without requiring Alice or Bob to be logged in.")
+            run_test_btn = gr.Button("Run E2E Test", variant="primary")
+            
+            with gr.Row():
+                pt_enc_img = gr.Image(label="Encryption Time", interactive=False, type="filepath")
+                pt_dec_img = gr.Image(label="Decryption Time", interactive=False, type="filepath")
+            with gr.Row():
+                pt_lat_img = gr.Image(label="End-to-End Latency", interactive=False, type="filepath")
+                pt_thr_img = gr.Image(label="Throughput", interactive=False, type="filepath")
+
+            test_output = gr.Textbox(label="Test Output", interactive=False, lines=15)
 
         # ---- Server View (Database Browser) ----
         with gr.Tab("Database Browser"):
@@ -820,7 +831,7 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
     run_test_btn.click(
         fn=run_planned_testing,
         inputs=[],
-        outputs=[test_output]
+        outputs=[test_output, pt_enc_img, pt_dec_img, pt_lat_img, pt_thr_img]
     )
 
     # Fetch data immediately on page load
