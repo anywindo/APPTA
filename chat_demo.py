@@ -515,12 +515,11 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
         identity_dd = gr.Dropdown(
             choices=["Alice", "Bob", "Database Browser"],
             label="Select Identity",
-            scale=2
+            scale=3
         )
+        login_status = gr.Markdown(value="", scale=3)
         login_btn = gr.Button("Login", variant="primary", scale=1)
         logout_btn = gr.Button("Logout", variant="secondary", scale=1, visible=False)
-
-    login_status = gr.Markdown()
 
     # ---- Client View (Alice / Bob) ----
     with gr.Column(visible=False) as client_view:
@@ -559,21 +558,24 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
 
     # ---- Server View (Database Browser) ----
     with gr.Group(visible=False) as server_view:
-        gr.Markdown("## Untrusted Server View (Database Browser)")
-        gr.Markdown(
-            "This simulates what the server can see. "
-            "Notice it only holds **encrypted ciphertexts** and **nonces** — no plaintext."
-        )
-        with gr.Row():
-            refresh_db_btn = gr.Button("Refresh Database View", variant="primary", scale=2)
-            db_auto_refresh = gr.Checkbox(label="Auto Refresh", value=True, scale=1)
+        with gr.Row(equal_height=True):
+            with gr.Column(scale=3):
+                gr.Markdown("## 🗄️ Untrusted Server View (Database Browser)")
+                gr.Markdown(
+                    "This simulates what the server can see. "
+                    "Notice it only holds **encrypted ciphertexts** and **nonces** — no plaintext."
+                )
+            with gr.Column(scale=1):
+                refresh_db_btn = gr.Button("🔄 Refresh Database View", variant="primary")
+                db_auto_refresh = gr.Checkbox(label="Auto Refresh (1s)", value=True)
             
         db_timer = gr.Timer(1, active=True)
         
-        gr.Markdown("### Public Keys Table")
-        db_keys_df = gr.Dataframe(interactive=False)
-        gr.Markdown("### Messages Table")
-        db_msgs_df = gr.Dataframe(interactive=False)
+        with gr.Accordion("🔑 Public Keys Table", open=True):
+            db_keys_df = gr.Dataframe(interactive=False, wrap=True)
+            
+        with gr.Accordion("✉️ Messages Table", open=True):
+            db_msgs_df = gr.Dataframe(interactive=False, wrap=True)
 
     # ---- Event wiring ----
     regen_key_btn.click(
