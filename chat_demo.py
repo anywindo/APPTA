@@ -264,6 +264,9 @@ def send_message(message, history, log, session):
     log += f"  Auth Tag (16 B): {tag.hex()}\n"
     log += "-----------------------\n"
 
+    logger.info(f"[{identity}] Sending encrypted message to untrusted server.")
+    logger.debug(f"Nonce (12B): {nonce.hex()} | Ciphertext ({len(ciphertext)}B) | Tag (16B): {tag.hex()}")
+    
     # Write to DB (the "untrusted server")
     conn = _db()
     c = conn.cursor()
@@ -325,11 +328,14 @@ def receive_messages(history, log, session):
         try:
             plaintext_bytes = crypto.decrypt(shared_key, nonce, ciphertext, tag)
             plaintext = plaintext_bytes.decode("utf-8")
+            logger.info(f"[{identity}] Successfully decrypted message (ID: {msg_id}) from {peer}.")
+            logger.debug(f"Decrypted plaintext: '{plaintext}'")
             log += f"  Decrypt + Auth : SUCCESS\n"
             log += f"  Plaintext      : {plaintext}\n"
             log += "-----------------------\n"
             history.append({"role": "assistant", "content": plaintext})
         except Exception as e:
+            logger.warning(f"[{identity}] Failed to decrypt message (ID: {msg_id}) from {peer}. Reason: {e}")
             log += f"  Decrypt + Auth : FAILED ({e})\n"
             log += "-----------------------\n"
             log += "\n═══ KEY REGENERATION ═══\n"
@@ -420,6 +426,7 @@ def regenerate_key(log, session, chatbot):
     conn.commit()
     conn.close()
 
+    logger.info(f"[{identity}] Regenerated fresh ephemeral ECDH keypair.")
     log += f"\n[{identity}] Regenerated fresh ephemeral ECDH keypair.\n"
     log += f"[{identity}] Saved new public key to server database ({len(pub_bytes)} bytes).\n"
 
