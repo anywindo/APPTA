@@ -1,24 +1,27 @@
 import sys
 from src.network import Sender
 from src.benchmark import BenchmarkRunner
+from src.logger import get_logger
+
+logger = get_logger("sender")
 
 def main():
     host = '127.0.0.1'
     port = 5000
     
     sender = Sender(host, port)
-    print(f"Connecting to receiver on {host}:{port}...")
+    logger.info(f"Connecting to receiver on {host}:{port}...")
     try:
         sender.connect()
-        print("Connected.")
+        logger.info("Connected.")
         sender.handshake()
-        print("ECDH Handshake complete.")
+        logger.info("ECDH Handshake complete.")
         
         runner = BenchmarkRunner(sender)
         runner.run_experiment()
         
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
     finally:
         sender.close()
 

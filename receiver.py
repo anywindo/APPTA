@@ -4,18 +4,21 @@ from src.network import Receiver
 from src import crypto
 from src import protocol
 from src.timing import Timer
+from src.logger import get_logger
+
+logger = get_logger("receiver")
 
 def main():
     host = '127.0.0.1'
     port = 5000
     
     receiver = Receiver(host, port)
-    print(f"Starting receiver on {host}:{port}...")
+    logger.info(f"Starting receiver on {host}:{port}...")
     try:
         receiver.start()
-        print("Sender connected.")
+        logger.info("Sender connected.")
         receiver.handshake()
-        print("ECDH Handshake complete. Waiting for messages...")
+        logger.info("ECDH Handshake complete. Waiting for messages...")
         
         messages_received = 0
         
@@ -33,7 +36,7 @@ def main():
             
             if len(plaintext) == 0 and success:
                 # 0-byte plaintext is the STOP signal
-                print(f"Received STOP signal. Total messages processed: {messages_received}")
+                logger.info(f"Received STOP signal. Total messages processed: {messages_received}")
                 break
                 
             decryption_time_ns = dec_timer.elapsed_ns
@@ -43,11 +46,11 @@ def main():
             messages_received += 1
             
     except socket.timeout:
-        print("Receiver timeout reached. Graceful shutdown.")
+        logger.warning("Receiver timeout reached. Graceful shutdown.")
     except ConnectionError:
-        print(f"Connection lost mid-experiment. Graceful shutdown, partial results valid. Processed: {messages_received}")
+        logger.warning(f"Connection lost mid-experiment. Graceful shutdown, partial results valid. Processed: {messages_received}")
     except Exception as e:
-        print(f"Error: {e}")
+        logger.error(f"Error: {e}")
     finally:
         receiver.close()
 

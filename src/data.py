@@ -6,7 +6,8 @@ import config
 class DataWriter:
     def __init__(self, filename=None):
         if filename is None:
-            now = datetime.datetime.now(datetime.timezone.utc).strftime('%Y%m%d_%H%M%S')
+            tz_utc_7 = datetime.timezone(datetime.timedelta(hours=7))
+            now = datetime.datetime.now(tz_utc_7).strftime('%Y%m%d_%H%M%S')
             filename = f"results_{now}.csv"
             
         self.filename = filename

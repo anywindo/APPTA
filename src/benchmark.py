@@ -7,6 +7,9 @@ from src import crypto
 from src import protocol
 from src.timing import Timer, calculate_throughput
 from src.data import DataWriter
+from src.logger import get_logger
+
+logger = get_logger("benchmark")
 
 def generate_plaintext(size_bytes):
     # Using random bytes for plaintext payload
@@ -27,11 +30,11 @@ class BenchmarkRunner:
         
         experiment_start = datetime.datetime.now()
         
-        print(f"Starting experiment: {len(plan)} sizes, {config.MEASURED_RUNS} runs per size (+ {config.WARMUP_RUNS} warm-ups)")
-        print(f"Execution order: {plan}")
+        logger.info(f"Starting experiment: {len(plan)} sizes, {config.MEASURED_RUNS} runs per size (+ {config.WARMUP_RUNS} warm-ups)")
+        logger.info(f"Execution order: {plan}")
         
         for size in plan:
-            print(f"\nMessage Size: {size} bytes")
+            logger.info(f"Message Size: {size} bytes")
             # Generate random plaintext for this size run
             plaintext = generate_plaintext(size)
             
@@ -47,7 +50,7 @@ class BenchmarkRunner:
                 
                 # Progress
                 if m % 10 == 0 or m == config.MEASURED_RUNS - 1:
-                    print(f"  [{current_run}/{total_runs}] Run {m+1}/{config.MEASURED_RUNS} " + ("OK" if success else "FAIL"))
+                    logger.debug(f"  [{current_run}/{total_runs}] Run {m+1}/{config.MEASURED_RUNS} " + ("OK" if success else "FAIL"))
                     
         experiment_end = datetime.datetime.now()
         duration = experiment_end - experiment_start
@@ -56,10 +59,10 @@ class BenchmarkRunner:
         empty_nonce, empty_ciphertext, empty_tag = crypto.encrypt(self.sender.session_key, b"")
         self.sender.send_message(protocol.package(empty_nonce, empty_ciphertext, empty_tag))
         
-        print("\nExperiment complete!")
-        print(f"Total time: {duration}")
+        logger.info("Experiment complete!")
+        logger.info(f"Total time: {duration}")
         if self.data_writer:
-            print(f"Results saved to: {self.data_writer.filename}")
+            logger.info(f"Results saved to: {self.data_writer.filename}")
             self.data_writer.close()
             
     def _execute_single_run(self, plaintext, record=True):
@@ -92,7 +95,7 @@ class BenchmarkRunner:
                 )
             return success
         except Exception as e:
-            print(f"Error during run: {e}")
+            logger.error(f"Error during run: {e}")
             if record and self.data_writer:
                 self.data_writer.write_row(
                     run_id=run_id,
