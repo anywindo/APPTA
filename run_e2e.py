@@ -9,7 +9,24 @@ logger = get_logger("e2e_runner")
 import datetime
 
 def main():
+    start_time = time.time()
+    
+    # Get configuration
+    repetitions = os.environ.get("EXPERIMENT_REPETITIONS", "30")
+    
+    config_msg = (
+        "--- E2EE Benchmark Configuration ---\n"
+        "ECDH Curve: SECP256R1\n"
+        "AES Key Size: 256-bit\n"
+        "Nonce Size: 12 bytes\n"
+        "Tag Size: 128-bit\n"
+        "Message Sizes: 16 B, 64 B, 256 B, 1 KB, 4 KB, 16 KB, 64 KB, 256 KB, 1 MB\n"
+        f"Measured Repetitions per Size: {repetitions}\n"
+        "------------------------------------"
+    )
+    
     logger.info("Starting E2E Validation Test...")
+    logger.info("\n" + config_msg)
     tz_utc_7 = datetime.timezone(datetime.timedelta(hours=7))
     now = datetime.datetime.now(tz_utc_7).strftime('%Y%m%d_%H%M%S')
     run_folder = os.path.join("results", f"run_{now}")
@@ -49,7 +66,11 @@ def main():
     assert os.path.exists(os.path.join(run_folder, "plot_latency.png")), "Latency plot missing"
     assert os.path.exists(os.path.join(run_folder, "summary.csv")), "Summary CSV missing"
     
+    total_time = time.time() - start_time
     logger.info("E2E Test completed successfully!")
+    logger.info("\n--- Test Finished ---")
+    logger.info(f"Total time taken: {total_time:.2f} seconds")
+    logger.info("\n" + config_msg)
 
 if __name__ == "__main__":
     main()

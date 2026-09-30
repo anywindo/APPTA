@@ -14,6 +14,20 @@ def load_results(csv_path):
 
 def compute_aggregation(df):
     """Computes mean, median, std, min, max for each metric grouped by message size."""
+    
+    if not df.empty:
+        cols = ["encryption_time_ns", "decryption_time_ns", "latency_ns", "throughput_bytes_per_s"]
+        # Calculate Q1, Q3, and IQR per message size
+        Q1 = df.groupby('message_size_bytes')[cols].transform('quantile', 0.25)
+        Q3 = df.groupby('message_size_bytes')[cols].transform('quantile', 0.75)
+        IQR = Q3 - Q1
+        lower_bound = Q1 - 1.5 * IQR
+        upper_bound = Q3 + 1.5 * IQR
+        
+        # Keep rows where ALL metrics are within bounds
+        mask = ((df[cols] >= lower_bound) & (df[cols] <= upper_bound)).all(axis=1)
+        df = df[mask].copy()
+
     metrics = [
         "encryption_time_ns",
         "decryption_time_ns",

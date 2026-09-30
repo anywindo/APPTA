@@ -5,8 +5,11 @@ Experiment configuration constants for APPTA thesis project.
 # Message sizes in bytes
 MESSAGE_SIZES = [16, 64, 256, 1024, 4096, 16384, 65536, 262144, 1048576]
 
+import os
+
 # Repetitions
-MEASURED_RUNS = 30
+_env_reps = os.environ.get("EXPERIMENT_REPETITIONS")
+MEASURED_RUNS = int(_env_reps) if _env_reps and _env_reps.isdigit() else 30
 WARMUP_RUNS = 5
 
 # Cryptographic parameters
