@@ -1,5 +1,6 @@
 import gradio as gr
 import subprocess
+from src.i18n import _, set_saved_language, CURRENT_LANG
 import sys
 import os
 import glob
@@ -254,9 +255,9 @@ def load_results(run_folder, translate_headers, x1, y1, x2, y2, x3, y3, x4, y4):
     fig_enc, fig_dec, fig_lat, fig_thr = update_all_plots(summary_df, x1, y1, x2, y2, x3, y3, x4, y4)
     
     return (
-        summary_df, format_df_headers(summary_df, translate_headers), summary_csv, 
+        summary_df, format_df_headers(summary_df, translate_headers), summary_csv if os.path.exists(summary_csv) else None, 
         fig_enc, fig_dec, fig_lat, fig_thr, 
-        format_df_headers(results_df, translate_headers), results_csv, env_df
+        format_df_headers(results_df, translate_headers), results_csv if os.path.exists(results_csv) else None, env_df
     )
 
 with gr.Blocks(title="E2EE Thesis Benchmark", fill_height=True) as app:
@@ -265,24 +266,24 @@ with gr.Blocks(title="E2EE Thesis Benchmark", fill_height=True) as app:
     
     with gr.Tabs():
         
-        with gr.Tab("Experiment Setup & Execution"):
+        with gr.Tab(_("tab_experiment")):
             with gr.Row():
                 with gr.Column():
-                    gr.Markdown("### Controlled Parameters (Fixed)")
+                    gr.Markdown(_("controlled_params"))
                     gr.Markdown("- **ECDH Curve:** SECP256R1\n- **AES Key Size:** 256-bit\n- **Nonce Size:** 12 bytes\n- **Tag Size:** 128-bit\n- **Message Sizes:** 16 B, 64 B, 256 B, 1 KB, 4 KB, 16 KB, 64 KB, 256 KB, 1 MB")
                 with gr.Column():
-                    reps_slider = gr.Slider(minimum=1, maximum=100, value=30, step=1, label="Measured Repetitions per Size")
-                run_btn = gr.Button("Run Experiment", variant="primary")
+                    reps_slider = gr.Slider(minimum=1, maximum=100, value=30, step=1, label=_("reps_slider"))
+                run_btn = gr.Button(_("run_btn"), variant="primary")
             
-            log_box = gr.Textbox(label="Terminal Output", lines=20, max_lines=20, interactive=False, autoscroll=True)
+            log_box = gr.Textbox(label=_("terminal_output"), lines=20, max_lines=20, interactive=False, autoscroll=True)
             
-        with gr.Tab("Aggregate Statistics"):
-            summary_table = gr.Dataframe(label="Summary Statistics")
-            summary_file = gr.File(label="Download summary.csv")
-            ai_summarize_btn = gr.Button("Summarize", variant="primary")
+        with gr.Tab(_("tab_aggregate")):
+            summary_table = gr.Dataframe(label=_("summary_stats"))
+            summary_file = gr.File(label=_("download_summary"))
+            ai_summarize_btn = gr.Button(_("summarize_btn"), variant="primary")
             ai_summary_box = gr.Markdown("### Analysis\n*Results will appear here.*")
             
-        with gr.Tab("Visualizations"):
+        with gr.Tab(_("tab_visualizations")):
             summary_state = gr.State(pd.DataFrame())
             x_options = [("Message Size (Bytes)", "message_size_bytes")]
             y_options = [
@@ -296,60 +297,95 @@ with gr.Blocks(title="E2EE Thesis Benchmark", fill_height=True) as app:
                 ("Throughput (Bytes/s)", "throughput_bytes_per_s")
             ]
             
-            with gr.Accordion("Advanced Chart Configuration (Axes Customization)", open=False):
+            with gr.Accordion(_("advanced_chart"), open=False):
                 with gr.Row():
-                    preset_dropdown = gr.Dropdown(choices=["Default (ms)", "Default (ns)", "Custom"], value="Default (ms)", label="Chart Presets", container=True)
-                with gr.Row():
-                    with gr.Column():
-                        gr.Markdown("**Chart 1**")
-                        with gr.Row():
-                            x1 = gr.Dropdown(choices=x_options, value="message_size_bytes", label="X-Axis", container=False)
-                            y1 = gr.Dropdown(choices=y_options, value="encryption_time_ms", label="Y-Axis", container=False)
-                    with gr.Column():
-                        gr.Markdown("**Chart 2**")
-                        with gr.Row():
-                            x2 = gr.Dropdown(choices=x_options, value="message_size_bytes", label="X-Axis", container=False)
-                            y2 = gr.Dropdown(choices=y_options, value="decryption_time_ms", label="Y-Axis", container=False)
+                    preset_dropdown = gr.Dropdown(choices=["Default (ms)", "Default (ns)", "Custom"], value="Default (ms)", label=_("chart_presets"), container=True)
                 with gr.Row():
                     with gr.Column():
-                        gr.Markdown("**Chart 3**")
+                        gr.Markdown(f"**{_('chart1')}**")
                         with gr.Row():
-                            x3 = gr.Dropdown(choices=x_options, value="message_size_bytes", label="X-Axis", container=False)
-                            y3 = gr.Dropdown(choices=y_options, value="latency_ms", label="Y-Axis", container=False)
+                            x1 = gr.Dropdown(choices=x_options, value="message_size_bytes", label=_("x_axis"), container=False)
+                            y1 = gr.Dropdown(choices=y_options, value="encryption_time_ms", label=_("y_axis"), container=False)
                     with gr.Column():
-                        gr.Markdown("**Chart 4**")
+                        gr.Markdown(f"**{_('chart2')}**")
                         with gr.Row():
-                            x4 = gr.Dropdown(choices=x_options, value="message_size_bytes", label="X-Axis", container=False)
-                            y4 = gr.Dropdown(choices=y_options, value="throughput_KB_s", label="Y-Axis", container=False)
+                            x2 = gr.Dropdown(choices=x_options, value="message_size_bytes", label=_("x_axis"), container=False)
+                            y2 = gr.Dropdown(choices=y_options, value="decryption_time_ms", label=_("y_axis"), container=False)
+                with gr.Row():
+                    with gr.Column():
+                        gr.Markdown(f"**{_('chart3')}**")
+                        with gr.Row():
+                            x3 = gr.Dropdown(choices=x_options, value="message_size_bytes", label=_("x_axis"), container=False)
+                            y3 = gr.Dropdown(choices=y_options, value="latency_ms", label=_("y_axis"), container=False)
+                    with gr.Column():
+                        gr.Markdown(f"**{_('chart4')}**")
+                        with gr.Row():
+                            x4 = gr.Dropdown(choices=x_options, value="message_size_bytes", label=_("x_axis"), container=False)
+                            y4 = gr.Dropdown(choices=y_options, value="throughput_KB_s", label=_("y_axis"), container=False)
 
             with gr.Row():
-                img_enc = gr.Plot(label="Chart 1")
-                img_dec = gr.Plot(label="Chart 2")
+                img_enc = gr.Plot(label=_("chart1"))
+                img_dec = gr.Plot(label=_("chart2"))
             with gr.Row():
-                img_lat = gr.Plot(label="Chart 3")
-                img_thr = gr.Plot(label="Chart 4")
+                img_lat = gr.Plot(label=_("chart3"))
+                img_thr = gr.Plot(label=_("chart4"))
                 
-        with gr.Tab("Raw Data Log"):
-            results_table = gr.Dataframe(label="Raw Observations (results.csv)")
-            results_file = gr.File(label="Download results.csv")
+        with gr.Tab(_("tab_raw_data")):
+            results_table = gr.Dataframe(label=_("raw_obs"))
+            results_file = gr.File(label=_("download_results"))
             
-        with gr.Tab("Environment"):
-            env_display = gr.Dataframe(label="System Environment Configuration", interactive=False, wrap=True)
+        with gr.Tab(_("tab_environment")):
+            env_display = gr.Dataframe(label=_("sys_env"), interactive=False, wrap=True)
 
-        with gr.Tab("Settings"):
-            gr.Markdown("### Application Preferences")
+        with gr.Tab(_("tab_about")):
+            gr.Markdown("""# About This Research
+
+This application is the experimental instrument for the thesis: 
+**"Analisis Pengaruh Ukuran Pesan terhadap Kinerja End-to-End Encryption Menggunakan ECDH dan AES-GCM pada Komunikasi Pesan"**
+*(Analysis of the Effect of Message Size on End-to-End Encryption Performance Using ECDH and AES-GCM in Text Communication)*
+
+## Research Objective
+End-to-End Encryption (E2EE) secures communication by encrypting data on the sender's device and only decrypting it on the recipient's device. This research investigates the computational overhead introduced by this process, specifically focusing on how **message size** affects the performance of an E2EE system built with **ECDH** (Elliptic Curve Diffie-Hellman) for key exchange and **AES-GCM** (Advanced Encryption Standard - Galois/Counter Mode) for message encryption.
+
+## Methodology
+The experiment isolates message size as the primary independent variable. Nine predetermined message sizes are tested:
+`16 B`, `64 B`, `256 B`, `1 KB`, `4 KB`, `16 KB`, `64 KB`, `256 KB`, and `1 MB`.
+
+For each size, the system executes 35 total runs (5 warm-up runs and 30 measured runs) to capture the following primary performance metrics:
+1. **Encryption Time:** Time taken to generate a nonce, encrypt the plaintext using AES-256-GCM, and package the ciphertext.
+2. **Decryption Time:** Time taken to parse the incoming package, authenticate, and decrypt the ciphertext back to plaintext.
+3. **Latency:** Round-trip application latency measured from immediately before encryption until an acknowledgment is received.
+4. **Throughput:** Effective end-to-end data transfer rate, calculated as `plaintext size / latency`.
+
+## System Architecture
+- **Key Exchange:** SECP256R1 (NIST P-256) curve, performed once per session.
+- **Key Derivation Function:** HKDF-SHA256 deriving a 256-bit session key.
+- **Message Encryption:** AES-256-GCM with a 12-byte random nonce and a 128-bit authentication tag.
+- **Network Transport:** Direct Client-to-Client TCP connection on a controlled Local Area Network (LAN).""")
+                
+        with gr.Tab(_("tab_settings")):
+            gr.Markdown(_("app_prefs"))
             
             with gr.Row():
                 with gr.Column(scale=2):
-                    gr.Markdown("#### Data Management")
-                    run_selector = gr.Dropdown(choices=["Latest"] + get_run_folders(), value="Latest", label="Data Source (Saved Run)", container=True)
-                    refresh_runs_btn = gr.Button("Refresh Run List", variant="primary")
+                    gr.Markdown(_("data_mgmt"))
+                    run_selector = gr.Dropdown(choices=["Latest"] + get_run_folders(), value="Latest", label=_("data_source"), container=True)
+                    refresh_runs_btn = gr.Button(_("refresh_runs"), variant="primary")
                 with gr.Column(scale=2):
-                    gr.Markdown("#### UI Customization")
-                    translate_headers_cb = gr.Checkbox(label="Translate Data Headers (Snake Case -> Title Case)", value=True)
+                    gr.Markdown(_("ui_cust"))
+                    translate_headers_cb = gr.Checkbox(label=_("translate_headers"), value=True)
                 with gr.Column(scale=2):
-                    gr.Markdown("#### System")
-                    restart_btn = gr.Button("Restart Server", variant="stop")
+                    gr.Markdown("#### " + _("language_sel"))
+                    lang_selector = gr.Dropdown(choices=["en", "id"], value=CURRENT_LANG, label=_("language_sel"))
+                    
+                    def change_lang(lang):
+                        set_saved_language(lang)
+                        return gr.update()
+                        
+                    lang_selector.change(fn=change_lang, inputs=[lang_selector], outputs=[])
+                with gr.Column(scale=2):
+                    gr.Markdown(_("sys"))
+                    restart_btn = gr.Button(_("restart_btn"), variant="stop")
 
     # Wire the event
     run_btn.click(

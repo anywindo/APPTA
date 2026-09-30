@@ -8,6 +8,7 @@ from src import protocol
 from src.timing import Timer, calculate_throughput
 from src.data import DataWriter
 from src.logger import get_logger
+from src.i18n import _
 
 logger = get_logger("benchmark")
 
@@ -30,11 +31,11 @@ class BenchmarkRunner:
         
         experiment_start = datetime.datetime.now()
         
-        logger.info(f"Starting experiment: {len(plan)} sizes, {config.MEASURED_RUNS} runs per size (+ {config.WARMUP_RUNS} warm-ups)")
-        logger.info(f"Execution order: {plan}")
+        logger.info(_("starting_exp", sizes=len(plan), runs=config.MEASURED_RUNS, warmups=config.WARMUP_RUNS))
+        logger.info(_("exec_order", plan=plan))
         
         for size in plan:
-            logger.info(f"Message Size: {size} bytes")
+            logger.info(_("msg_size", size=size))
             # Generate random plaintext for this size run
             plaintext = generate_plaintext(size)
             
@@ -59,10 +60,10 @@ class BenchmarkRunner:
         empty_nonce, empty_ciphertext, empty_tag = crypto.encrypt(self.sender.session_key, b"")
         self.sender.send_message(protocol.package(empty_nonce, empty_ciphertext, empty_tag))
         
-        logger.info("Experiment complete!")
-        logger.info(f"Total time: {duration}")
+        logger.info(_("exp_complete"))
+        logger.info(_("total_time", duration=duration))
         if self.data_writer:
-            logger.info(f"Results saved to: {self.data_writer.filename}")
+            logger.info(_("results_saved", filename=self.data_writer.filename))
             self.data_writer.close()
             
     def _execute_single_run(self, plaintext, record=True):
@@ -95,7 +96,7 @@ class BenchmarkRunner:
                 )
             return success
         except Exception as e:
-            logger.error(f"Error during run: {e}")
+            logger.error(_("err_run", e=e))
             if record and self.data_writer:
                 self.data_writer.write_row(
                     run_id=run_id,

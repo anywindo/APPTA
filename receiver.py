@@ -1,6 +1,7 @@
 import sys
 import socket
 from src.network import Receiver
+from src.i18n import _
 from src import crypto
 from src import protocol
 from src.timing import Timer
@@ -16,7 +17,7 @@ def main():
     logger.info(f"Starting receiver on {host}:{port}...")
     try:
         receiver.start()
-        logger.info("Sender connected.")
+        logger.info(_("receiver_sender_connected"))
         receiver.handshake()
         logger.info("ECDH Handshake complete. Waiting for messages...")
         

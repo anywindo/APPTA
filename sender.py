@@ -1,5 +1,6 @@
 import sys
 from src.network import Sender
+from src.i18n import _
 from src.benchmark import BenchmarkRunner
 from src.logger import get_logger
 
@@ -13,7 +14,7 @@ def main():
     logger.info(f"Connecting to receiver on {host}:{port}...")
     try:
         sender.connect()
-        logger.info("Connected.")
+        logger.info(_("sender_connected"))
         sender.handshake()
         logger.info("ECDH Handshake complete.")
         
