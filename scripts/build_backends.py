@@ -30,11 +30,33 @@ def get_pyinstaller_cmd():
     
     return [sys.executable, "-m", "PyInstaller"]
 
+def safe_remove_dir(target_path):
+    if not os.path.exists(target_path):
+        return
+    for root, dirs, files in os.walk(target_path, topdown=False):
+        for f in files:
+            try:
+                os.remove(os.path.join(root, f))
+            except Exception:
+                pass
+        for d in dirs:
+            try:
+                os.rmdir(os.path.join(root, d))
+            except Exception:
+                pass
+    try:
+        shutil.rmtree(target_path, ignore_errors=True)
+    except Exception:
+        pass
+
 def build_binary(script_name, target_name):
     print(f"\n==========================================")
     print(f"  Building {target_name} from {script_name}")
     print(f"==========================================")
-    
+
+    target_dir = os.path.join(DIST_DIR, target_name)
+    safe_remove_dir(target_dir)
+
     script_path = os.path.join(PROJECT_ROOT, script_name)
     pyinstaller = get_pyinstaller_cmd()
 
