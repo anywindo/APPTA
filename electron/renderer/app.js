@@ -42,6 +42,24 @@ document.addEventListener('DOMContentLoaded', async () => {
     chat: { status: 'starting', url: 'http://127.0.0.1:7861', port: 7861 }
   };
 
+  function updateSplashVisibility() {
+    if (activeTab === 'app') {
+      splashChat.classList.add('hidden');
+      if (servicesState.app.status === 'ready') {
+        splashApp.classList.add('hidden');
+      } else {
+        splashApp.classList.remove('hidden');
+      }
+    } else {
+      splashApp.classList.add('hidden');
+      if (servicesState.chat.status === 'ready') {
+        splashChat.classList.add('hidden');
+      } else {
+        splashChat.classList.remove('hidden');
+      }
+    }
+  }
+
   // Switch between tabs
   function selectTab(appKey) {
     activeTab = appKey;
@@ -66,6 +84,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     updateHeaderStatusPill();
+    updateSplashVisibility();
   }
 
   function updateHeaderStatusPill() {
@@ -108,9 +127,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!viewApp.src || viewApp.src === 'about:blank' || viewApp.src !== data.url) {
           viewApp.src = data.url;
         }
-        setTimeout(() => splashApp.classList.add('hidden'), 350);
       } else if (appKey === 'chat') {
-        // Load into BOTH Alice and Bob isolated webviews with respective default identities!
         const aliceUrl = `${data.url}/?user=Alice`;
         const bobUrl = `${data.url}/?user=Bob`;
 
@@ -120,23 +137,27 @@ document.addEventListener('DOMContentLoaded', async () => {
         if (!viewChatBob.src || viewChatBob.src === 'about:blank' || !viewChatBob.src.includes('user=Bob')) {
           viewChatBob.src = bobUrl;
         }
-        setTimeout(() => splashChat.classList.add('hidden'), 450);
       }
-    } else if (data.status === 'starting' || data.status === 'stopping') {
-      const splash = appKey === 'app' ? splashApp : splashChat;
-      splash.classList.remove('hidden');
     }
+
+    updateSplashVisibility();
   }
 
   // Webview lifecycle listeners
   if (viewApp) {
-    viewApp.addEventListener('dom-ready', () => splashApp.classList.add('hidden'));
+    viewApp.addEventListener('dom-ready', () => {
+      if (activeTab === 'app') splashApp.classList.add('hidden');
+    });
   }
   if (viewChatAlice) {
-    viewChatAlice.addEventListener('dom-ready', () => splashChat.classList.add('hidden'));
+    viewChatAlice.addEventListener('dom-ready', () => {
+      if (activeTab === 'chat') splashChat.classList.add('hidden');
+    });
   }
   if (viewChatBob) {
-    viewChatBob.addEventListener('dom-ready', () => splashChat.classList.add('hidden'));
+    viewChatBob.addEventListener('dom-ready', () => {
+      if (activeTab === 'chat') splashChat.classList.add('hidden');
+    });
   }
 
   // Reload Individual Panes (if buttons present)
