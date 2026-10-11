@@ -59,6 +59,12 @@ def build_binary(script_name, target_name):
     print(f"Running: {' '.join(cmd)}")
     subprocess.check_call(cmd, cwd=PROJECT_ROOT)
 
+if sys.stdout and hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 def main():
     os.makedirs(DIST_DIR, exist_ok=True)
     os.makedirs(WORK_DIR, exist_ok=True)
@@ -69,7 +75,7 @@ def main():
     build_binary("app.py", "app_backend")
     build_binary("chat_demo.py", "chat_backend")
 
-    print("\n✅ Python backends built successfully into build/bin!")
+    print("\n[SUCCESS] Python backends built successfully into build/bin!")
 
 if __name__ == "__main__":
     main()

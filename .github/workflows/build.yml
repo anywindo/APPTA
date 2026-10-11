@@ -25,6 +25,9 @@ jobs:
             python-cmd: python3
 
     runs-on: ${{ matrix.os }}
+    env:
+      PYTHONIOENCODING: "utf-8"
+      PYTHONUTF8: "1"
 
     steps:
       - name: Checkout Repository
