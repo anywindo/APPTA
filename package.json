@@ -62,15 +62,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/anywindo/Tugas Akhir.git"
+    "url": "git+https://github.com/anywindo/APPTA.git"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/anywindo/Tugas Akhir/issues"
+    "url": "https://github.com/anywindo/APPTA/issues"
   },
-  "homepage": "https://github.com/anywindo/Tugas Akhir#readme",
+  "homepage": "https://github.com/anywindo/APPTA#readme",
   "devDependencies": {
     "electron": "^44.7.0",
     "electron-builder": "^26.15.3"
