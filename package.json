@@ -57,7 +57,8 @@
         "AppImage",
         "deb"
       ],
-      "category": "Development"
+      "category": "Development",
+      "maintainer": "anywindo <arwindosendy9@gmail.com>"
     }
   },
   "repository": {
@@ -65,7 +66,7 @@
     "url": "git+https://github.com/anywindo/APPTA.git"
   },
   "keywords": [],
-  "author": "",
+  "author": "anywindo <arwindosendy9@gmail.com>",
   "license": "ISC",
   "bugs": {
     "url": "https://github.com/anywindo/APPTA/issues"
