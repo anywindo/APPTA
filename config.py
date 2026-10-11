@@ -1,5 +1,5 @@
 """
-Experiment configuration constants for APPTA thesis project.
+Experiment configuration constants for Tugas Akhir thesis project.
 """
 
 # Message sizes in bytes

@@ -1,0 +1,71 @@
+name: Build Multiplatform App
+
+on:
+  push:
+    branches: [ "main", "master", "chat" ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build on ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            platform: mac
+            python-cmd: python3
+          - os: windows-latest
+            platform: win
+            python-cmd: python
+          - os: ubuntu-latest
+            platform: linux
+            python-cmd: python3
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: 'pip'
+
+      - name: Install Python Dependencies & PyInstaller
+        run: |
+          ${{ matrix.python-cmd }} -m pip install --upgrade pip
+          ${{ matrix.python-cmd }} -m pip install -r requirements.txt pyinstaller
+
+      - name: Install Node.js Dependencies
+        run: npm ci
+
+      - name: Freeze Python Backends (PyInstaller)
+        run: ${{ matrix.python-cmd }} scripts/build_backends.py
+
+      - name: Package with Electron Builder
+        run: npx electron-builder --${{ matrix.platform }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.platform }}
+          path: |
+            dist/*.dmg
+            dist/*.zip
+            dist/*.exe
+            dist/*.AppImage
+            dist/*.deb
+          if-no-files-found: warn

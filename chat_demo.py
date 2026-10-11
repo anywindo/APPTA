@@ -114,17 +114,6 @@ def login(identity, session, chatbot):
 
 
     # ---- Alice or Bob ----
-    if identity in ACTIVE_USERS and session.get("identity") != identity:
-        return (
-            gr.update(visible=False),
-            chatbot,
-            "",
-            f"Error: **{identity}** is already logged in on another browser! Please Logout first.",
-            session,
-            gr.update(visible=True),   # identity_dd
-            gr.update(visible=True),   # login_btn
-            gr.update(visible=False),  # logout_btn
-        )
     ACTIVE_USERS.add(identity)
 
     priv_key, pub_key = crypto.generate_keypair()
@@ -922,13 +911,23 @@ with gr.Blocks(title="E2EE Chat Demo") as app:
         outputs=[test_output, pt_enc_img, pt_dec_img, pt_lat_img, pt_thr_img, pt_results_df, pt_dataframe_state]
     )
 
-    # Fetch data immediately on page load
+    def on_page_load(request: gr.Request = None):
+        target_user = "Alice"
+        if request and hasattr(request, "query_params"):
+            q_user = request.query_params.get("user") or request.query_params.get("identity")
+            if q_user in ["Alice", "Bob"]:
+                target_user = q_user
+        db_results = view_db()
+        return (target_user, *db_results)
+
+    # Fetch data and set default identity on page load
     app.load(
-        fn=view_db,
+        fn=on_page_load,
         inputs=[],
-        outputs=[db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot, enc_agg_plot, dec_agg_plot, lat_agg_plot, thr_agg_plot],
+        outputs=[identity_dd, db_keys_df, db_msgs_df, perf_metrics_df, enc_time_plot, dec_time_plot, latency_plot, throughput_plot, enc_agg_plot, dec_agg_plot, lat_agg_plot, thr_agg_plot],
     )
 
 if __name__ == "__main__":
     import os
-    app.launch(allowed_paths=[os.path.abspath("results")])
+    port = int(os.environ.get("GRADIO_SERVER_PORT", 7860))
+    app.launch(server_port=port, allowed_paths=[os.path.abspath("results")])

@@ -4,4 +4,10 @@ __pycache__/
 *.pyc
 results/
 *.csv
-*.pngchat.db
+*.png
+chat.db
+node_modules/
+dist/
+build/
+*.spec
+.DS_Store

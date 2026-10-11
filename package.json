@@ -1,0 +1,78 @@
+{
+  "name": "tugas-akhir-electron",
+  "version": "1.0.0",
+  "description": "This repository contains the Python implementation of an experimental end-to-end encrypted (E2EE) one-to-one text messaging system. It serves as a measurement instrument to analyze the effect of message size on E2EE performance, using ECDH for key exchange and AES-GCM for message encryption.",
+  "main": "electron/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron .",
+    "build:python": "node scripts/run_python_build.js",
+    "pack": "npm run build:python && electron-builder",
+    "dist": "electron-builder",
+    "dist:mac": "electron-builder --mac",
+    "dist:win": "electron-builder --win",
+    "dist:linux": "electron-builder --linux",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "build": {
+    "appId": "com.anywindo.appta",
+    "productName": "E2EE Messaging Suite",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "electron/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/bin",
+        "to": "bin",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "assets",
+        "to": "assets"
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "hardenedRuntime": false
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "category": "Development"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/anywindo/Tugas Akhir.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/anywindo/Tugas Akhir/issues"
+  },
+  "homepage": "https://github.com/anywindo/Tugas Akhir#readme",
+  "devDependencies": {
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3"
+  }
+}

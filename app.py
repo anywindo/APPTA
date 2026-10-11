@@ -547,5 +547,5 @@ For each size, the system executes 35 total runs (5 warm-up runs and 30 measured
     )
 
 if __name__ == "__main__":
-    app.queue().launch()
-import requests
+    port = int(os.environ.get("GRADIO_SERVER_PORT", 7860))
+    app.queue().launch(server_port=port)

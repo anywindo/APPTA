@@ -1,0 +1,690 @@
+/* ==========================================================================
+   Tugas Akhir - Apple macOS Human Interface Guidelines (HIG) Theme
+   ========================================================================== */
+
+:root {
+  --apple-bg: #1c1c1e;
+  --apple-bg-secondary: #2c2c2e;
+  --apple-toolbar-bg: rgba(36, 36, 38, 0.75);
+  --apple-pane-header: rgba(32, 32, 34, 0.85);
+
+  --apple-blue: #0a84ff;
+  --apple-blue-hover: #0071e3;
+  --apple-green: #30d158;
+  --apple-amber: #ffd60a;
+  --apple-red: #ff453a;
+  --apple-indigo: #5e5ce6;
+
+  --text-primary: #ffffff;
+  --text-secondary: rgba(235, 235, 245, 0.65);
+  --text-tertiary: rgba(235, 235, 245, 0.40);
+
+  --hairline: rgba(255, 255, 255, 0.08);
+  --hairline-strong: rgba(255, 255, 255, 0.14);
+  --surface-hover: rgba(255, 255, 255, 0.08);
+  --surface-active: rgba(255, 255, 255, 0.15);
+
+  --font-mac: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", "Helvetica Neue", sans-serif;
+  --font-mono: "SF Mono", Monaco, Menlo, Consolas, monospace;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background-color: transparent;
+  color: var(--text-primary);
+  font-family: var(--font-mac);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ==========================================================================
+   macOS Unified Toolbar
+   ========================================================================== */
+.app-toolbar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 52px;
+  background: var(--apple-toolbar-bg);
+  backdrop-filter: blur(30px) saturate(190%);
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+  border-bottom: 0.5px solid var(--hairline-strong);
+  padding: 0 16px;
+  padding-left: 90px;
+  /* Precise offset for native macOS traffic lights */
+  z-index: 100;
+  user-select: none;
+}
+
+.drag-handle {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  -webkit-app-region: drag;
+  z-index: 0;
+}
+
+.toolbar-section {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  -webkit-app-region: no-drag;
+}
+
+.toolbar-leading {
+  gap: 16px;
+}
+
+.toolbar-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2;
+  -webkit-app-region: no-drag;
+}
+
+.toolbar-trailing {
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* App Title */
+.app-title-group {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  padding-right: 6px;
+}
+
+.app-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+  color: #ffffff;
+}
+
+.app-sub {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--text-tertiary);
+  letter-spacing: 0.2px;
+}
+
+/* ==========================================================================
+   Apple Native Segmented Control
+   ========================================================================== */
+.segmented-control {
+  display: flex;
+  background: rgba(0, 0, 0, 0.28);
+  border: 0.5px solid var(--hairline);
+  padding: 2.5px;
+  border-radius: 8px;
+  gap: 2px;
+}
+
+.segment-item {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-family: var(--font-mac);
+  font-size: 12px;
+  font-weight: 500;
+  padding: 4px 12px;
+  border-radius: 6px;
+  cursor: default;
+  transition: all 0.15s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.segment-item:hover {
+  color: #ffffff;
+}
+
+.segment-item.active {
+  background: rgba(255, 255, 255, 0.16);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.25), inset 0 0.5px 0.5px rgba(255, 255, 255, 0.15);
+}
+
+.segment-badge {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--apple-blue);
+  background: rgba(10, 132, 255, 0.16);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.indicator-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  display: inline-block;
+  background-color: var(--text-tertiary);
+  transition: all 0.25s ease;
+}
+
+.indicator-dot.dot-ready {
+  background-color: var(--apple-green);
+  box-shadow: 0 0 5px rgba(48, 209, 88, 0.6);
+}
+
+.indicator-dot.dot-starting {
+  background-color: var(--apple-amber);
+  animation: pulse-dot 1.2s infinite ease-in-out;
+}
+
+.indicator-dot.dot-error {
+  background-color: var(--apple-red);
+}
+
+@keyframes pulse-dot {
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.9);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+/* SF Icons */
+.sf-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* ==========================================================================
+   macOS Status Badge & Toolbar Buttons
+   ========================================================================== */
+.status-badge {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  background: rgba(0, 0, 0, 0.2);
+  border: 0.5px solid var(--hairline);
+  padding: 3px 10px;
+  border-radius: 999px;
+}
+
+.status-pulse {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--apple-amber);
+  transition: all 0.3s ease;
+}
+
+.status-badge.ready .status-pulse {
+  background-color: var(--apple-green);
+  box-shadow: 0 0 6px rgba(48, 209, 88, 0.7);
+}
+
+.status-badge.starting .status-pulse {
+  background-color: var(--apple-amber);
+  animation: pulse-dot 1.2s infinite ease-in-out;
+}
+
+.status-badge.error .status-pulse {
+  background-color: var(--apple-red);
+}
+
+.button-group {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.toolbar-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  border-radius: 6px;
+  cursor: default;
+  transition: all 0.12s ease;
+}
+
+.toolbar-btn:hover {
+  background: var(--surface-hover);
+  color: #ffffff;
+}
+
+.toolbar-btn:active {
+  background: var(--surface-active);
+}
+
+.toolbar-btn.active {
+  color: var(--apple-blue);
+  background: rgba(10, 132, 255, 0.16);
+}
+
+/* ==========================================================================
+   Viewport Stage Layout
+   ========================================================================== */
+.app-viewport {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 52px);
+  width: 100%;
+  overflow: hidden;
+  background: #141416;
+}
+
+.view-stage {
+  position: relative;
+  flex: 1;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.stage-view {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  border: none;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.stage-view.active {
+  visibility: visible;
+  opacity: 1;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+/* ==========================================================================
+   Apple Messages Style Split View (Alice & Bob Side-by-Side)
+   ========================================================================== */
+.chat-splitview {
+  display: flex;
+  flex-direction: row;
+  width: 100%;
+  height: 100%;
+  background: #141416;
+}
+
+.peer-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+}
+
+/* Peer Header (Apple Messages conversation banner style) */
+.peer-header {
+  height: 36px;
+  background: var(--apple-pane-header);
+  border-bottom: 0.5px solid var(--hairline-strong);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 14px;
+  user-select: none;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  z-index: 2;
+}
+
+.peer-info {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.peer-avatar {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.peer-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.avatar-alice {
+  box-shadow: 0 1px 3px rgba(10, 132, 255, 0.4);
+}
+
+.avatar-bob {
+  box-shadow: 0 1px 3px rgba(48, 209, 88, 0.4);
+}
+
+.peer-names {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.peer-display-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #ffffff;
+  letter-spacing: -0.1px;
+}
+
+.peer-role {
+  font-size: 10.5px;
+  font-weight: 400;
+  color: var(--text-tertiary);
+}
+
+.peer-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s ease;
+}
+
+.peer-action-btn:hover {
+  color: #ffffff;
+  background: var(--surface-hover);
+}
+
+.peer-webview {
+  flex: 1;
+  width: 100%;
+  height: calc(100% - 36px);
+  border: none;
+}
+
+/* Hairline Divider */
+.peer-divider {
+  width: 1px;
+  background: var(--hairline-strong);
+  position: relative;
+  z-index: 5;
+}
+
+/* Single Mode (collapses right pane) */
+.chat-splitview.single-mode #pane-bob,
+.chat-splitview.single-mode .peer-divider {
+  display: none;
+}
+
+/* ==========================================================================
+   Apple Frosted Loading Sheet
+   ========================================================================== */
+.frosted-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(15, 15, 17, 0.6);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  z-index: 50;
+  transition: opacity 0.25s cubic-bezier(0.2, 0, 0, 1), visibility 0.25s ease;
+}
+
+.frosted-overlay.hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.frosted-card {
+  width: 90%;
+  max-width: 440px;
+  background: rgba(36, 36, 38, 0.85);
+  border: 0.5px solid var(--hairline-strong);
+  backdrop-filter: blur(40px) saturate(190%);
+  -webkit-backdrop-filter: blur(40px) saturate(190%);
+  border-radius: 16px;
+  padding: 32px 28px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6), 0 2px 8px rgba(0, 0, 0, 0.4);
+}
+
+/* Apple Native Spinner */
+.apple-spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2.5px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--apple-blue);
+  animation: spin 0.85s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  margin-bottom: 18px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.frosted-card h2 {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.frosted-card .subtitle {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-bottom: 18px;
+}
+
+.console-preview {
+  width: 100%;
+  background: rgba(0, 0, 0, 0.35);
+  border: 0.5px solid var(--hairline);
+  border-radius: 8px;
+  padding: 10px 12px;
+  text-align: left;
+}
+
+.console-preview pre {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: rgba(235, 235, 245, 0.8);
+  height: 44px;
+  overflow: hidden;
+  white-space: pre-wrap;
+  word-break: break-all;
+  line-height: 1.45;
+}
+
+/* ==========================================================================
+   macOS Terminal Style Console Drawer
+   ========================================================================== */
+.console-drawer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 240px;
+  background: rgba(22, 22, 24, 0.94);
+  backdrop-filter: blur(30px);
+  -webkit-backdrop-filter: blur(30px);
+  border-top: 0.5px solid var(--hairline-strong);
+  display: flex;
+  flex-direction: column;
+  z-index: 60;
+  transform: translateY(100%);
+  transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.console-drawer.open {
+  transform: translateY(0);
+}
+
+.drawer-toolbar {
+  height: 34px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 0.5px solid var(--hairline);
+  background: rgba(28, 28, 30, 0.7);
+  user-select: none;
+}
+
+.drawer-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.drawer-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--apple-blue);
+}
+
+.drawer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.drawer-segmented {
+  display: flex;
+  background: rgba(0, 0, 0, 0.3);
+  border: 0.5px solid var(--hairline);
+  border-radius: 6px;
+  padding: 1.5px;
+  gap: 1.5px;
+}
+
+.log-filter {
+  background: transparent;
+  border: none;
+  color: var(--text-tertiary);
+  font-size: 10.5px;
+  font-family: var(--font-mac);
+  padding: 2px 7px;
+  border-radius: 4px;
+  cursor: default;
+  transition: all 0.12s ease;
+}
+
+.log-filter.active {
+  background: rgba(255, 255, 255, 0.15);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.auto-scroll-toggle {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10.5px;
+  color: var(--text-tertiary);
+  cursor: default;
+}
+
+.auto-scroll-toggle input {
+  accent-color: var(--apple-blue);
+  cursor: default;
+}
+
+.drawer-btn {
+  background: transparent;
+  border: 0.5px solid var(--hairline);
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-family: var(--font-mac);
+  padding: 2px 7px;
+  border-radius: 5px;
+  cursor: default;
+  transition: all 0.12s ease;
+}
+
+.drawer-btn:hover {
+  color: #ffffff;
+  background: var(--surface-hover);
+}
+
+.drawer-btn.close-btn {
+  border: none;
+  font-size: 12px;
+  padding: 2px 5px;
+}
+
+.drawer-body {
+  flex: 1;
+  padding: 10px 14px;
+  overflow-y: auto;
+}
+
+.console-text {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.45;
+  color: rgba(235, 235, 245, 0.85);
+  white-space: pre-wrap;
+  word-break: break-all;
+}

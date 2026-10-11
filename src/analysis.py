@@ -159,7 +159,7 @@ def generate_all_plots(aggregated_df, output_dir):
         )
 
 def main():
-    parser = argparse.ArgumentParser(description="Analyze APPTA benchmark results")
+    parser = argparse.ArgumentParser(description="Analyze Tugas Akhir benchmark results")
     parser.add_argument("csv_path", help="Path to raw benchmark CSV file")
     parser.add_argument("--outdir", default="results", help="Directory to save plots and summary")
     

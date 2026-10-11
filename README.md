@@ -1,4 +1,4 @@
-# APPTA - Thesis Experimental Instrument
+# Tugas Akhir - Thesis Experimental Instrument
 
 This repository contains the Python implementation of an experimental end-to-end encrypted (E2EE) one-to-one text messaging system. It serves as a measurement instrument to analyze the effect of message size on E2EE performance, using ECDH for key exchange and AES-GCM for message encryption.
 
@@ -32,3 +32,21 @@ The experiment requires two components running, ideally on two separate machines
     ```
 
 The sender will connect to the receiver, perform the ECDH key exchange, and automatically run the benchmark across predefined message sizes. Results will be saved to a CSV file.
+
+## Running the Desktop Application (Electron)
+
+You can launch the integrated desktop interface wrapping both Gradio apps with seamless switching:
+
+```bash
+# Install Node dependencies (first time only)
+npm install
+
+# Launch the Electron app
+npm start
+```
+
+### Features
+- **Dual-App Switcher**: Instantly switch between the **Benchmark & Analysis Suite** (`app.py`) and the **Interactive E2EE Chat Demo** (`chat_demo.py`).
+- **Automatic Lifecycle Management**: Automatically detects your virtual environment (`venv`), boots the Python backend, waits for HTTP readiness, and cleans up processes when quitting.
+- **Console Drawer**: Live streaming terminal logs for monitoring Python execution and debugging.
+- **Native Shortcuts**: `CmdOrCtrl+1` for Benchmark Suite, `CmdOrCtrl+2` for Chat Demo, `CmdOrCtrl+Shift+R` to restart backend.
