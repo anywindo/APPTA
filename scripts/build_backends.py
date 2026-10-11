@@ -53,6 +53,16 @@ def build_binary(script_name, target_name):
         "--copy-metadata", "tqdm",
         "--copy-metadata", "requests",
         "--copy-metadata", "packaging",
+        "--exclude-module", "tkinter",
+        "--exclude-module", "tcl",
+        "--exclude-module", "pytest",
+        "--exclude-module", "unittest",
+        "--exclude-module", "IPython",
+        "--exclude-module", "pandas.tests",
+        "--exclude-module", "numpy.tests",
+        "--exclude-module", "matplotlib.tests",
+        "--exclude-module", "PIL.tests",
+        "--exclude-module", "pydoc",
         script_path
     ]
 
@@ -74,6 +84,9 @@ def main():
 
     build_binary("app.py", "app_backend")
     build_binary("chat_demo.py", "chat_backend")
+
+    if os.path.exists(WORK_DIR):
+        shutil.rmtree(WORK_DIR, ignore_errors=True)
 
     print("\n[SUCCESS] Python backends built successfully into build/bin!")
 

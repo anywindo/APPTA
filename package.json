@@ -30,7 +30,11 @@
         "from": "build/bin",
         "to": "bin",
         "filter": [
-          "**/*"
+          "**/*",
+          "!**/*.pyc",
+          "!**/__pycache__/**",
+          "!**/*.pdb",
+          "!**/*.map"
         ]
       },
       {
@@ -38,6 +42,7 @@
         "to": "assets"
       }
     ],
+    "compression": "maximum",
     "mac": {
       "category": "public.app-category.developer-tools",
       "target": [
@@ -46,11 +51,18 @@
       ],
       "hardenedRuntime": false
     },
+    "dmg": {
+      "format": "ULFO"
+    },
     "win": {
       "target": [
         "nsis",
         "portable"
       ]
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
     },
     "linux": {
       "target": [
