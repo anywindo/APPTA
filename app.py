@@ -500,9 +500,14 @@ For each size, the system executes 35 total runs (5 warm-up runs and 30 measured
             
         import requests
         url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
+
+        api_key = os.environ.get("GOOGLE_API_KEY")
+        if not api_key:
+            return "Error: GOOGLE_API_KEY environment variable is not set."
+
         headers = {
             'Content-Type': 'application/json',
-            'X-goog-api-key': 'AQ.Ab8RN6K2k8uTs-CkJyFcvFVMb9YJE428IfgK1dHcsfYLpkBkVQ'
+            'X-goog-api-key': api_key
         }
         
         data_str = df.to_string(index=False)
