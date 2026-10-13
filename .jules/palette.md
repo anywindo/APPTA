@@ -1,0 +1,3 @@
+## 2024-05-15 - Missing ARIA labels in custom Electron UI
+**Learning:** Custom UI toolbars in Electron often use generic container elements (like `div`) and SVG icons without native text content, causing a complete lack of context for screen readers when focused on interactive elements like buttons.
+**Action:** When creating custom toolbars or native-like macOS elements in HTML/CSS, always ensure icon-only buttons include descriptive `aria-label` or `title` attributes that convey the action.
