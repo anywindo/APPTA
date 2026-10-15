@@ -54,7 +54,7 @@
         </button>
 
         <!-- Console Drawer -->
-        <button id="btn-toggle-logs" class="toolbar-btn" title="Toggle Console Drawer" aria-label="Toggle Console Drawer">
+        <button id="btn-toggle-logs" class="toolbar-btn" title="Toggle Console Drawer" aria-label="Toggle Console Drawer" aria-expanded="false" aria-controls="logs-drawer">
           <svg class="sf-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
             <rect x="1.5" y="2.5" width="13" height="11" rx="2"></rect>
             <polyline points="4.5 6 7 8 4.5 10"></polyline>
@@ -146,10 +146,10 @@
           <span>Process Console</span>
         </div>
         <div class="drawer-actions">
-          <div class="drawer-segmented">
-            <button class="log-filter active" data-filter="all">All</button>
-            <button class="log-filter" data-filter="app">app.py</button>
-            <button class="log-filter" data-filter="chat">chat_demo.py</button>
+          <div class="drawer-segmented" role="group" aria-label="Log Filters">
+            <button class="log-filter active" data-filter="all" aria-pressed="true">All</button>
+            <button class="log-filter" data-filter="app" aria-pressed="false">app.py</button>
+            <button class="log-filter" data-filter="chat" aria-pressed="false">chat_demo.py</button>
           </div>
           <label class="auto-scroll-toggle">
             <input type="checkbox" id="chk-autoscroll" checked>

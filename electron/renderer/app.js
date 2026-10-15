@@ -214,12 +214,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   function toggleLogs() {
     const isOpen = logsDrawer.classList.toggle('open');
     btnToggleLogs.classList.toggle('active', isOpen);
+    btnToggleLogs.setAttribute('aria-expanded', isOpen);
   }
 
   btnToggleLogs.addEventListener('click', toggleLogs);
   btnCloseLogs.addEventListener('click', () => {
     logsDrawer.classList.remove('open');
     btnToggleLogs.classList.remove('active');
+    btnToggleLogs.setAttribute('aria-expanded', 'false');
   });
 
   btnClearLogs.addEventListener('click', () => {
@@ -231,8 +233,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   logFilterButtons.forEach(btn => {
     btn.addEventListener('click', () => {
-      logFilterButtons.forEach(b => b.classList.remove('active'));
+      logFilterButtons.forEach(b => {
+        b.classList.remove('active');
+        b.setAttribute('aria-pressed', 'false');
+      });
       btn.classList.add('active');
+      btn.setAttribute('aria-pressed', 'true');
       activeLogFilter = btn.dataset.filter;
       renderLogs();
     });
