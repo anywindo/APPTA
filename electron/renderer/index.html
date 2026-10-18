@@ -23,7 +23,7 @@
     <!-- Centered Segmented Control -->
     <div class="toolbar-section toolbar-center">
       <div class="segmented-control" role="tablist">
-        <button id="btn-app-benchmark" class="segment-item active" role="tab" aria-selected="true" data-app="app">
+        <button id="btn-app-benchmark" class="segment-item active" role="tab" aria-selected="true" data-app="app" aria-controls="view-app">
           <span class="indicator-dot dot-starting" id="dot-app"></span>
           <svg class="sf-icon" viewBox="0 0 16 16" fill="currentColor">
             <path
@@ -31,7 +31,7 @@
           </svg>
           <span>Benchmark Suite</span>
         </button>
-        <button id="btn-app-chat" class="segment-item" role="tab" aria-selected="false" data-app="chat">
+        <button id="btn-app-chat" class="segment-item" role="tab" aria-selected="false" data-app="chat" aria-controls="container-chat">
           <span class="indicator-dot dot-starting" id="dot-chat"></span>
           <svg class="sf-icon" viewBox="0 0 16 16" fill="currentColor">
             <path
@@ -54,7 +54,7 @@
         </button>
 
         <!-- Console Drawer -->
-        <button id="btn-toggle-logs" class="toolbar-btn" title="Toggle Console Drawer" aria-label="Toggle Console Drawer">
+        <button id="btn-toggle-logs" class="toolbar-btn" title="Toggle Console Drawer" aria-label="Toggle Console Drawer" aria-expanded="false" aria-controls="logs-drawer">
           <svg class="sf-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
             <rect x="1.5" y="2.5" width="13" height="11" rx="2"></rect>
             <polyline points="4.5 6 7 8 4.5 10"></polyline>
@@ -69,16 +69,16 @@
   <main class="app-viewport">
     <div class="view-stage">
       <!-- 1. Benchmark & Analysis View -->
-      <webview id="view-app" class="stage-view active" src="about:blank" allowpopups autosize="on"></webview>
+      <webview id="view-app" class="stage-view active" src="about:blank" allowpopups autosize="on" role="tabpanel" aria-labelledby="btn-app-benchmark"></webview>
 
       <!-- 2. Dual Side-by-Side E2EE Chat View -->
-      <div id="container-chat" class="stage-view chat-splitview split-mode">
+      <div id="container-chat" class="stage-view chat-splitview split-mode" role="tabpanel" aria-labelledby="btn-app-chat">
         <!-- Left Pane: Alice -->
         <section class="peer-pane" id="pane-alice">
           <header class="peer-header">
             <div class="peer-info">
-              <div class="peer-avatar avatar-alice">
-                <img src="../../assets/alice.jpeg" alt="Alice">
+              <div class="peer-avatar avatar-alice" aria-hidden="true">
+                <img src="../../assets/alice.jpeg" alt="">
               </div>
               <div class="peer-names">
                 <span class="peer-display-name">Alice</span>
@@ -99,8 +99,8 @@
         <section class="peer-pane" id="pane-bob">
           <header class="peer-header">
             <div class="peer-info">
-              <div class="peer-avatar avatar-bob">
-                <img src="../../assets/bob.jpeg" alt="Bob">
+              <div class="peer-avatar avatar-bob" aria-hidden="true">
+                <img src="../../assets/bob.jpeg" alt="">
               </div>
               <div class="peer-names">
                 <span class="peer-display-name">Bob</span>
@@ -146,16 +146,16 @@
           <span>Process Console</span>
         </div>
         <div class="drawer-actions">
-          <div class="drawer-segmented">
-            <button class="log-filter active" data-filter="all">All</button>
-            <button class="log-filter" data-filter="app">app.py</button>
-            <button class="log-filter" data-filter="chat">chat_demo.py</button>
+          <div class="drawer-segmented" role="group" aria-label="Log Filters">
+            <button class="log-filter active" data-filter="all" aria-pressed="true">All</button>
+            <button class="log-filter" data-filter="app" aria-pressed="false">app.py</button>
+            <button class="log-filter" data-filter="chat" aria-pressed="false">chat_demo.py</button>
           </div>
           <label class="auto-scroll-toggle">
             <input type="checkbox" id="chk-autoscroll" checked>
             <span>Auto-scroll</span>
           </label>
-          <button id="btn-clear-logs" class="drawer-btn">Clear</button>
+          <button id="btn-clear-logs" class="drawer-btn" title="Clear process logs" aria-label="Clear process logs">Clear</button>
           <button id="btn-close-logs" class="drawer-btn close-btn" aria-label="Close Console Drawer">✕</button>
         </div>
       </header>
