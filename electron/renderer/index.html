@@ -22,8 +22,8 @@
 
     <!-- Centered Segmented Control -->
     <div class="toolbar-section toolbar-center">
-      <div class="segmented-control" role="tablist">
-        <button id="btn-app-benchmark" class="segment-item active" role="tab" aria-selected="true" data-app="app">
+      <div class="segmented-control" role="tablist" aria-label="App Switcher">
+        <button id="btn-app-benchmark" class="segment-item active" role="tab" aria-selected="true" aria-controls="view-app" data-app="app">
           <span class="indicator-dot dot-starting" id="dot-app"></span>
           <svg class="sf-icon" viewBox="0 0 16 16" fill="currentColor">
             <path
@@ -31,7 +31,7 @@
           </svg>
           <span>Benchmark Suite</span>
         </button>
-        <button id="btn-app-chat" class="segment-item" role="tab" aria-selected="false" data-app="chat">
+        <button id="btn-app-chat" class="segment-item" role="tab" aria-selected="false" aria-controls="container-chat" data-app="chat">
           <span class="indicator-dot dot-starting" id="dot-chat"></span>
           <svg class="sf-icon" viewBox="0 0 16 16" fill="currentColor">
             <path
@@ -114,10 +114,10 @@
       </div>
 
       <!-- Apple-style Frosted Loading Sheet for Benchmark -->
-      <div id="splash-app" class="frosted-overlay">
+      <div id="splash-app" class="frosted-overlay" role="alertdialog" aria-live="polite" aria-labelledby="splash-app-title">
         <div class="frosted-card">
-          <div class="apple-spinner"></div>
-          <h2>Loading Benchmark Suite</h2>
+          <div class="apple-spinner" aria-hidden="true"></div>
+          <h2 id="splash-app-title">Loading Benchmark Suite</h2>
           <p class="subtitle">Starting app.py on port 7860</p>
           <div class="console-preview">
             <pre id="splash-log-app">Initializing runtime...</pre>
@@ -126,10 +126,10 @@
       </div>
 
       <!-- Apple-style Frosted Loading Sheet for Chat -->
-      <div id="splash-chat" class="frosted-overlay hidden">
+      <div id="splash-chat" class="frosted-overlay hidden" role="alertdialog" aria-live="polite" aria-labelledby="splash-chat-title">
         <div class="frosted-card">
-          <div class="apple-spinner"></div>
-          <h2>Preparing E2EE Chat Sessions</h2>
+          <div class="apple-spinner" aria-hidden="true"></div>
+          <h2 id="splash-chat-title">Preparing E2EE Chat Sessions</h2>
           <p class="subtitle">Connecting Alice & Bob on port 7861</p>
           <div class="console-preview">
             <pre id="splash-log-chat">Initializing SQLite database and key exchange...</pre>
@@ -151,7 +151,7 @@
             <button class="log-filter" data-filter="app" aria-pressed="false">app.py</button>
             <button class="log-filter" data-filter="chat" aria-pressed="false">chat_demo.py</button>
           </div>
-          <label class="auto-scroll-toggle">
+          <label class="auto-scroll-toggle" for="chk-autoscroll">
             <input type="checkbox" id="chk-autoscroll" checked>
             <span>Auto-scroll</span>
           </label>
@@ -159,7 +159,7 @@
           <button id="btn-close-logs" class="drawer-btn close-btn" aria-label="Close Console Drawer">✕</button>
         </div>
       </header>
-      <div class="drawer-body">
+      <div class="drawer-body" tabindex="0" role="log" aria-label="Console Output">
         <pre id="full-log-stream" class="console-text"></pre>
       </div>
     </aside>
