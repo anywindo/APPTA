@@ -693,4 +693,15 @@ body {
   color: rgba(235, 235, 245, 0.85);
   white-space: pre-wrap;
   word-break: break-all;
+  min-height: 100%;
+}
+.console-text:empty::before {
+  content: "Waiting for process logs...";
+  color: var(--text-tertiary);
+  font-family: var(--font-mac);
+  font-style: italic;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
 }
