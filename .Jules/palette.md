@@ -4,3 +4,6 @@
 ## 2024-05-24 - Screen Reader Redundancy in Avatar Components
 **Learning:** When displaying an avatar image next to the user's name as text, providing an `alt` attribute with the user's name causes screen readers to redundantly announce the name twice (e.g., "Alice, Alice").
 **Action:** For decorative avatars accompanied by visible name text, set `alt=""` on the `<img>` and `aria-hidden="true"` on the wrapper to hide the image from assistive technologies, ensuring a clean and concise screen reader experience.
+## 2024-11-20 - Persistent Connection States for Screen Readers
+**Learning:** In desktop wrappers that manage local backend services, failing to expose connection states (e.g., "Starting...", "Online", "Error") persistently limits accessibility. Using `role="status"` and `aria-live="polite"` on a persistent status pill allows screen readers to announce connectivity changes without disrupting the user, which is critical for apps where backend readiness dictates usability.
+**Action:** Always include an ARIA live region for dynamic backend statuses in hybrid apps to guarantee that all users receive feedback about service availability.
