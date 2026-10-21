@@ -92,7 +92,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const s = servicesState[activeTab];
     if (!s) return;
 
-    statusPill.className = 'status-indicator ' + s.status;
+    statusPill.className = 'status-badge ' + s.status;
     if (s.status === 'ready') {
       statusText.textContent = `${activeTab === 'app' ? 'Benchmark' : 'Chat (Alice & Bob)'} Online :${s.port}`;
     } else if (s.status === 'starting') {
