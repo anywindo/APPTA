@@ -24,16 +24,16 @@
     <div class="toolbar-section toolbar-center">
       <div class="segmented-control" role="tablist">
         <button id="btn-app-benchmark" class="segment-item active" role="tab" aria-selected="true" data-app="app" aria-controls="view-app">
-          <span class="indicator-dot dot-starting" id="dot-app"></span>
-          <svg class="sf-icon" viewBox="0 0 16 16" fill="currentColor">
+          <span class="indicator-dot dot-starting" id="dot-app" aria-hidden="true"></span>
+          <svg class="sf-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path
               d="M2 12.5a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v1.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-1.5zm4.5-4a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v5.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-5.5zm4.5-4a.75.75 0 0 1 .75-.75h1.5a.75.75 0 0 1 .75.75v9.5a.75.75 0 0 1-.75.75h-1.5a.75.75 0 0 1-.75-.75v-9.5z" />
           </svg>
           <span>Benchmark Suite</span>
         </button>
         <button id="btn-app-chat" class="segment-item" role="tab" aria-selected="false" data-app="chat" aria-controls="container-chat">
-          <span class="indicator-dot dot-starting" id="dot-chat"></span>
-          <svg class="sf-icon" viewBox="0 0 16 16" fill="currentColor">
+          <span class="indicator-dot dot-starting" id="dot-chat" aria-hidden="true"></span>
+          <svg class="sf-icon" viewBox="0 0 16 16" fill="currentColor" aria-hidden="true">
             <path
               d="M2 3.5A2.5 2.5 0 0 1 4.5 1h7A2.5 2.5 0 0 1 14 3.5v5A2.5 2.5 0 0 1 11.5 11h-3.2l-3.6 2.7a.6.6 0 0 1-.95-.48v-2.26A2.5 2.5 0 0 1 2 8.5v-5z" />
           </svg>
@@ -48,14 +48,14 @@
       <div class="button-group">
         <!-- Restart Backend -->
         <button id="btn-restart-backend" class="toolbar-btn" title="Restart Backend (Cmd+Shift+R)" aria-label="Restart Backend">
-          <svg class="sf-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+          <svg class="sf-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
             <polygon points="8.5 1.5 2 9 7.5 9 7 14.5 14 7 8.5 7 8.5 1.5"></polygon>
           </svg>
         </button>
 
         <!-- Console Drawer -->
         <button id="btn-toggle-logs" class="toolbar-btn" title="Toggle Console Drawer" aria-label="Toggle Console Drawer" aria-expanded="false" aria-controls="logs-drawer">
-          <svg class="sf-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3">
+          <svg class="sf-icon" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true">
             <rect x="1.5" y="2.5" width="13" height="11" rx="2"></rect>
             <polyline points="4.5 6 7 8 4.5 10"></polyline>
             <line x1="8.5" y1="10" x2="11.5" y2="10"></line>
@@ -142,7 +142,7 @@
     <aside id="logs-drawer" class="console-drawer">
       <header class="drawer-toolbar">
         <div class="drawer-title">
-          <span class="drawer-dot"></span>
+          <span class="drawer-dot" aria-hidden="true"></span>
           <span>Process Console</span>
         </div>
         <div class="drawer-actions">
@@ -156,7 +156,7 @@
             <span>Auto-scroll</span>
           </label>
           <button id="btn-clear-logs" class="drawer-btn" title="Clear process logs" aria-label="Clear process logs">Clear</button>
-          <button id="btn-close-logs" class="drawer-btn close-btn" aria-label="Close Console Drawer">✕</button>
+          <button id="btn-close-logs" class="drawer-btn close-btn" title="Close Console Drawer" aria-label="Close Console Drawer">✕</button>
         </div>
       </header>
       <div class="drawer-body">
