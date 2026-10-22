@@ -4,3 +4,6 @@
 ## 2024-05-24 - Screen Reader Redundancy in Avatar Components
 **Learning:** When displaying an avatar image next to the user's name as text, providing an `alt` attribute with the user's name causes screen readers to redundantly announce the name twice (e.g., "Alice, Alice").
 **Action:** For decorative avatars accompanied by visible name text, set `alt=""` on the `<img>` and `aria-hidden="true"` on the wrapper to hide the image from assistive technologies, ensuring a clean and concise screen reader experience.
+## 2026-10-22 - Hiding Decorative Elements in Web-Native Desktop UIs
+**Learning:** When building desktop UIs using web technologies (like Electron), imitating native OS elements often involves adding purely decorative elements like SVGs (SF Symbols) or status indicator dots (`.indicator-dot`). Without explicit `aria-hidden="true"`, screen readers will often redundantly or confusingly read out these decorative elements, degrading the user experience for those relying on assistive tech.
+**Action:** Always verify that purely visual/decorative icons, badges, and structural dots imitating native OS design patterns have `aria-hidden="true"` applied to prevent screen reader noise.
